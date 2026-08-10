@@ -1,0 +1,18 @@
+MY TRAINING TRACKER — GITHUB PAGES SETUP
+
+1. Create a GitHub repository, e.g. my-training-tracker.
+2. Upload EVERYTHING inside this folder to the repository root.
+3. GitHub: Settings -> Pages.
+4. Under "Build and deployment", choose "Deploy from a branch".
+5. Select the main branch and the /(root) folder, then Save.
+6. Wait for GitHub Pages to publish the site.
+7. Open the published https://<username>.github.io/<repository>/ address on your iPhone.
+8. In Safari use Share -> Add to Home Screen.
+
+IMPORTANT:
+- Upload the contents of this folder, not the ZIP itself.
+- This build uses relative manifest/service-worker paths and is prepared for a GitHub Pages project URL.
+- Your workout history/bodyweight/notes are stored locally in the browser. Hosting changes do not transfer or erase that local data.
+- Keep a backup from the app's Settings -> Export Data before changing hosts.
+
+This package is V14 and retains the V14 AI Coach, V13 bodyweight/notes/history, V12 PRs, V11 graphs and V10 progression features.

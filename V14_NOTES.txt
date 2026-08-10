@@ -1,0 +1,13 @@
+V14 additions
+
+- Tier 1.4: AI Coach added as a new bottom-tab page.
+- Coach runs fully on-device/offline; no API key, account or external AI service is required.
+- Personalised snapshot using recent training days, logged volume, bodyweight and PR count.
+- Next-session recommendations use the same progression logic as the workout cards.
+- Surfaces recent exercise notes so the coach context is visible in one place.
+- Adds a clear explanation of how recommendations are generated.
+- Service worker cache bumped to V14 and old caches are cleaned on activation.
+
+Data safety
+- Existing workout logs, notes, bodyweight, settings and progression data remain in browser localStorage.
+- Export/import backups remain available in Settings.

@@ -1,0 +1,8 @@
+V12 — Tier 1.3 Personal Records
+
+PRs appear in Progress beneath the graphs.
+- Heaviest load + reps
+- Rep PR
+- Estimated 1RM
+- Best session volume
+- V10/V11 features retained

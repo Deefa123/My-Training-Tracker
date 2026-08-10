@@ -1,0 +1,7 @@
+V13 additions
+
+- Tier 3.10: bodyweight logging with daily entries and progress chart
+- Tier 3.8: notes saved per exercise/session and shown in exercise history
+- Tier 2.4: dedicated exercise history selector with session-by-session details
+- Existing V12 PRs, V11 graphs, V10 smarter progression, Week A/B rotation and themes retained
+- Existing backups remain compatible; bodyweight is included in new exports
