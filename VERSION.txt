@@ -1,3 +1,1 @@
- My Training Tracker
-Version: V14
-Target hosting: GitHub Pages project site
+V15

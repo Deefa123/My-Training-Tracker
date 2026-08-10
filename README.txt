@@ -1,4 +1,4 @@
-My Training Tracker PWA V14
+My Training Tracker PWA V15
 
 Tier 1.4 — On-device AI Coach.
 - Reviews recent training volume, training days, bodyweight and PRs.

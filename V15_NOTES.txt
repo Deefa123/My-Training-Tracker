@@ -1,0 +1,10 @@
+My Training Tracker — V15
+
+New in V15:
+- Daily bodyweight logging remains available from the Workout tab.
+- Weekly bodyweight averages are calculated Monday–Sunday.
+- A weekly average uses only the days actually logged, so missed weigh-ins are ignored rather than treated as zero or missing weight.
+- This week is compared with the previous calendar week to show weight gained/lost.
+- Weekly history shows each recorded week, its average, days logged, and week-on-week change.
+- Existing V14 workout, history, progress, PR, AI Coach, settings, theme, and backup functionality is retained.
+- Bodyweight data continues to use the existing localStorage key for compatibility with V14.
