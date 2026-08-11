@@ -1,0 +1,10 @@
+V17 — Better AI Coach explanations
+
+- Adds clear status labels: On target / Worth watching / Action recommended
+- Shows phase, target range, current weekly average and 3-week trend
+- Explains why the coach is or is not recommending a calorie change
+- Explains why the app waits for enough data before acting
+- Gives a clear next step and reassessment guidance
+- Training progression cards now explain the progression rule behind increase/hold/reduce decisions
+- V16 calculations are unchanged; V17 improves communication, not the underlying thresholds
+- GitHub Pages cache bumped to V17
