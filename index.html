@@ -141,8 +141,8 @@ a{color:var(--accent)}
 .history-session-head b{font-size:17px}.history-session-meta{font-size:13px;color:var(--muted);text-align:right}
 .history-session-sets{margin-top:8px;font-size:14px;line-height:1.6}
 .history-session-note{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--accent-soft);font-size:14px}
-.pr-badge{display:inline-flex;gap:6px;align-items:center;padding:6px 9px;border-radius:999px;background:var(--accent-soft);font-size:12px;font-weight:800;margin:5px 5px 3px 0}
-.progress-section{margin-top:22px}.progress-section h3{margin-bottom:8px}
+.pr-badge{display:inline-flex;padding:6px 9px;border-radius:999px;background:var(--accent-soft);font-size:12px;font-weight:800;margin:5px 5px 3px 0}
+.progress-section{margin-top:22px}
 @media(max-width:700px){.history-summary,.progress-kpis{grid-template-columns:repeat(2,1fr)}}
 </style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v19</p></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
@@ -462,80 +462,46 @@ function renderWorkout(){
 }
 function saveEx(i){let e=entries()[i],sets=[];for(let j=0;j<e[1];j++){let kg=document.getElementById('kg-'+i+'-'+j).value,r=document.getElementById('rp-'+i+'-'+j).value;if(kg!==''||r!=='')sets.push({kg:+kg||0,reps:+r||0})}if(!sets.length){alert('Enter at least one set.');return}let note=document.getElementById('note-'+i)?.value?.trim()||'';logs.push({id:Date.now(),date:new Date().toISOString().slice(0,10),week:week(),day,session:currentSessionKey(),exercise:e[0],sets,note});save();render()}
 
+function v19Volume(l){return (l&&l.sets||[]).reduce((a,s)=>a+(+s.kg||0)*(+s.reps||0),0)}
 function exerciseSessionRows(ex){return logs.filter(x=>x.exercise===ex).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)))}
-function bestSetForLog(l){
- if(!l||!l.sets||!l.sets.length)return{kg:0,reps:0,e1rm:0};
- let best={kg:0,reps:0,e1rm:0};
- l.sets.forEach(s=>{let kg=+s.kg||0,reps=+s.reps||0,e=estimated1RM(kg,reps);if(kg>best.kg||(kg===best.kg&&reps>best.reps)){best.kg=kg;best.reps=reps}if(e>best.e1rm)best.e1rm=e});
- return best
-}
+function bestSetForLog(l){let best={kg:0,reps:0,e1rm:0};(l&&l.sets||[]).forEach(s=>{let kg=+s.kg||0,reps=+s.reps||0,e=estimated1RM(kg,reps);if(kg>best.kg||(kg===best.kg&&reps>best.reps)){best.kg=kg;best.reps=reps}if(e>best.e1rm)best.e1rm=e});return best}
 function exerciseStats(ex){
  let rows=exerciseSessionRows(ex);if(!rows.length)return null;
- let latest=rows[rows.length-1],latestBest=bestSetForLog(latest),allPr=getPRData(ex);
- let now=new Date(),d30=new Date(now),d90=new Date(now);d30.setDate(now.getDate()-30);d90.setDate(now.getDate()-90);
+ let latest=rows[rows.length-1],p=getPRData(ex),now=new Date(),d30=new Date(now),d90=new Date(now);d30.setDate(now.getDate()-30);d90.setDate(now.getDate()-90);
  function firstAfter(d){return rows.find(r=>new Date(r.date+'T12:00:00')>=d)||rows[0]}
- function pctChange(a,b){let ea=bestSetForLog(a).e1rm,eb=bestSetForLog(b).e1rm;return ea&&eb?((eb-ea)/ea)*100:null}
- return {rows,latestBest,bestWeight:allPr.heaviest.kg||0,bestE1RM:allPr.e1.value||0,bestVolume:allPr.vol.value||0,change30:pctChange(firstAfter(d30),latest),change90:pctChange(firstAfter(d90),latest)}
+ function change(a,b){let x=bestSetForLog(a).e1rm,y=bestSetForLog(b).e1rm;return x&&y?((y-x)/x)*100:null}
+ return{rows,latestBest:bestSetForLog(latest),bestWeight:p.heaviest.kg||0,bestE1RM:p.e1.value||0,change30:change(firstAfter(d30),latest),change90:change(firstAfter(d90),latest)}
 }
-function exerciseHistorySummary(ex){
- let s=exerciseStats(ex);if(!s)return '';
- let f=n=>n==null?'—':`${n>=0?'+':''}${n.toFixed(1)}%`;
- return `<div class="history-summary">
- <div class="card"><div class="small">Latest best set</div><div class="big">${s.latestBest.kg} kg × ${s.latestBest.reps}</div></div>
- <div class="card"><div class="small">Best weight</div><div class="big">${s.bestWeight} kg</div></div>
- <div class="card"><div class="small">Best est. 1RM</div><div class="big">${Math.round(s.bestE1RM*10)/10} kg</div></div>
- <div class="card"><div class="small">90-day change</div><div class="big">${f(s.change90)}</div></div>
- </div>`
-}
+function exerciseHistorySummary(ex){let s=exerciseStats(ex);if(!s)return'';let f=n=>n==null?'—':`${n>=0?'+':''}${n.toFixed(1)}%`;return `<div class="history-summary"><div class="card"><div class="small">Latest best set</div><div class="big">${s.latestBest.kg} kg × ${s.latestBest.reps}</div></div><div class="card"><div class="small">Best weight</div><div class="big">${s.bestWeight} kg</div></div><div class="card"><div class="small">Best est. 1RM</div><div class="big">${Math.round(s.bestE1RM*10)/10} kg</div></div><div class="card"><div class="small">90-day change</div><div class="big">${f(s.change90)}</div></div></div>`}
 function sessionPRBadges(ex,row){
- let rows=exerciseSessionRows(ex),idx=rows.findIndex(x=>x.id===row.id),before=rows.slice(0,Math.max(0,idx)),badges=[],cur=bestSetForLog(row),curVol=calcVolume(row);
- let maxKg=Math.max(0,...before.flatMap(r=>r.sets.map(s=>+s.kg||0)));
- let maxReps=Math.max(0,...before.flatMap(r=>r.sets.map(s=>+s.reps||0)));
- let maxE=Math.max(0,...before.flatMap(r=>r.sets.map(s=>estimated1RM(+s.kg||0,+s.reps||0))));
- let maxV=Math.max(0,...before.map(calcVolume));
- if(cur.kg>maxKg)badges.push('🏆 Weight PR');
- if(cur.reps>maxReps)badges.push('🏆 Rep PR');
- if(cur.e1rm>maxE)badges.push('🏆 e1RM PR');
- if(curVol>maxV)badges.push('🏆 Volume PR');
- return badges
+ let rows=exerciseSessionRows(ex),idx=rows.findIndex(x=>x.id===row.id),before=rows.slice(0,Math.max(0,idx)),badges=[],cur=bestSetForLog(row),curVol=v19Volume(row);
+ let maxKg=Math.max(0,...before.flatMap(r=>(r.sets||[]).map(s=>+s.kg||0))),maxReps=Math.max(0,...before.flatMap(r=>(r.sets||[]).map(s=>+s.reps||0))),maxE=Math.max(0,...before.flatMap(r=>(r.sets||[]).map(s=>estimated1RM(+s.kg||0,+s.reps||0)))),maxV=Math.max(0,...before.map(v19Volume));
+ if(cur.kg>maxKg)badges.push('🏆 Weight PR');if(cur.reps>maxReps)badges.push('🏆 Rep PR');if(cur.e1rm>maxE)badges.push('🏆 e1RM PR');if(curVol>maxV)badges.push('🏆 Volume PR');return badges
 }
 function redesignedExerciseHistory(ex){
- let s=exerciseStats(ex);if(!s)return '<p class="sub">No saved sessions for this exercise yet.</p>';
- return exerciseHistorySummary(ex)+`<div class="progress-section"><h3>Session history</h3>`+
- s.rows.slice().reverse().map(r=>{
-  let b=bestSetForLog(r),v=calcVolume(r),prs=sessionPRBadges(ex,r);
-  return `<div class="history-session"><div class="history-session-head"><div><b>${esc(r.date)} · ${esc(r.day)}</b><div class="small">Week ${esc(r.week||'')} · ${r.sets.length} working sets</div></div><div class="history-session-meta">Best ${b.kg} kg × ${b.reps}<br>${Math.round(v)} kg volume</div></div>${prs.length?`<div>${prs.map(x=>`<span class="pr-badge">${x}</span>`).join('')}</div>`:''}<div class="history-session-sets">${r.sets.map(s=>`${esc(s.kg)} kg × ${esc(s.reps)} reps`).join(' · ')}</div>${r.note?`<div class="history-session-note">📝 ${esc(r.note)}</div>`:''}</div>`
- }).join('')+`</div>`
+ let s=exerciseStats(ex);if(!s)return'<p class="sub">No saved sessions for this exercise yet.</p>';
+ return exerciseHistorySummary(ex)+`<div class="progress-section"><h3>Session history</h3>`+s.rows.slice().reverse().map(r=>{let b=bestSetForLog(r),v=v19Volume(r),p=sessionPRBadges(ex,r);return `<div class="history-session"><div class="history-session-head"><div><b>${esc(r.date)} · ${esc(r.day)}</b><div class="small">Week ${esc(r.week||'')} · ${(r.sets||[]).length} working sets</div></div><div class="history-session-meta">Best ${b.kg} kg × ${b.reps}<br>${Math.round(v)} kg volume</div></div>${p.length?`<div>${p.map(x=>`<span class="pr-badge">${x}</span>`).join('')}</div>`:''}<div class="history-session-sets">${(r.sets||[]).map(s=>`${esc(s.kg)} kg × ${esc(s.reps)} reps`).join(' · ')}</div>${r.note?`<div class="history-session-note">📝 ${esc(r.note)}</div>`:''}</div>`}).join('')+`</div>`
 }
 function progressOverview(){
  let exercises=[...new Set(logs.map(x=>x.exercise).filter(Boolean))],improved=[],stalled=[];
- exercises.forEach(ex=>{let s=exerciseStats(ex);if(!s)return;if(s.change30!=null&&s.change30>1)improved.push({ex,val:s.change30});if(s.rows.length>=4){let last4=s.rows.slice(-4).map(r=>bestSetForLog(r).e1rm),spread=Math.max(...last4)-Math.min(...last4);if(spread<1)stalled.push(ex)}});
+ exercises.forEach(ex=>{let s=exerciseStats(ex);if(!s)return;if(s.change30!=null&&s.change30>1)improved.push({ex,val:s.change30});if(s.rows.length>=4){let a=s.rows.slice(-4).map(r=>bestSetForLog(r).e1rm);if(Math.max(...a)-Math.min(...a)<1)stalled.push(ex)}});
  improved.sort((a,b)=>b.val-a.val);let top=improved[0];
- return `<div class="progress-kpis">
- <div class="card"><div class="small">Exercises tracked</div><div class="big">${exercises.length}</div></div>
- <div class="card"><div class="small">PR profiles</div><div class="big">${allPRRows().length}</div></div>
- <div class="card"><div class="small">Strongest 30d</div><div class="big">${top?esc(top.ex):'—'}</div><div class="small">${top?`+${top.val.toFixed(1)}% e1RM`:'No trend yet'}</div></div>
- <div class="card"><div class="small">Potential stalls</div><div class="big">${stalled.length}</div></div>
- </div>`
+ return `<div class="progress-kpis"><div class="card"><div class="small">Exercises tracked</div><div class="big">${exercises.length}</div></div><div class="card"><div class="small">PR profiles</div><div class="big">${allPRRows().length}</div></div><div class="card"><div class="small">Strongest 30d</div><div class="big">${top?esc(top.ex):'—'}</div><div class="small">${top?`+${top.val.toFixed(1)}% e1RM`:'No trend yet'}</div></div><div class="card"><div class="small">Potential stalls</div><div class="big">${stalled.length}</div></div></div>`
 }
 
 function history(){
- let exercises=[...new Set(logs.map(x=>x.exercise).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
- let selected=localStorage.getItem('historyExercise')||exercises[0]||'';
+ let exercises=[...new Set(logs.map(x=>x.exercise).filter(Boolean))].sort((a,b)=>a.localeCompare(b)),selected=localStorage.getItem('historyExercise')||exercises[0]||'';
  if(selected&&!exercises.includes(selected))selected=exercises[0]||'';
- return '<section class="card"><h2>📚 Exercise History</h2><p class="sub">Choose an exercise to review performance, PRs, notes and every previous session.</p>'+
- '<label>Exercise<select onchange="setHistoryExercise(this.value)">'+(exercises.length?exercises.map(e=>'<option value="'+esc(e)+'" '+(e===selected?'selected':'')+'>'+esc(e)+'</option>').join(''):'<option>No exercises logged</option>')+'</select></label>'+
- (selected?redesignedExerciseHistory(selected):'<p class="sub">No workouts saved yet.</p>')+
- '<div style="margin-top:18px"><button onclick="clearLogs()">Clear all history</button></div></section>'
+ return '<section class="card"><h2>📚 Exercise History</h2><p class="sub">Choose an exercise to review performance, PRs, notes and every previous session.</p><label>Exercise<select onchange="setHistoryExercise(this.value)">'+(exercises.length?exercises.map(e=>'<option value="'+esc(e)+'" '+(e===selected?'selected':'')+'>'+esc(e)+'</option>').join(''):'<option>No exercises logged</option>')+'</select></label>'+(selected?redesignedExerciseHistory(selected):'<p class="sub">No workouts saved yet.</p>')+'<div style="margin-top:18px"><button onclick="clearLogs()">Clear all history</button></div></section>'
 }
+function coachRange(ex){for(let w of ['A','B'])for(let k of Object.keys(P[w]))for(let e of P[w][k])if(e[0]===ex)return e[2];return '8–12'}
+function coachSameSessionLast(ex){let matches=logs.filter(x=>x.exercise===ex);return matches.length?matches[matches.length-1]:null}
+function coachRecommendation(ex){let last=coachSameSessionLast(ex), range=coachRange(ex), cfg=PROG_CONFIG[ex]??2.5;if(!last)return {tone:'neutral',text:`No previous log yet. Start near the bottom of the ${range} rep range with a controlled load.`};let [min,max]=parseRange(range),sets=last.sets||[],reps=sets.map(s=>+s.reps||0).filter(Boolean),weights=sets.map(s=>+s.kg||0).filter(Boolean),maxW=weights.length?Math.max(...weights):0,allTop=reps.length>=sets.length&&reps.length>0&&reps.every(r=>r>=max),mostlyLow=reps.length>0&&reps.filter(r=>r<min).length/reps.length>=.5;if(allTop&&cfg>0){let w=Math.round((maxW+cfg)/cfg)*cfg;return{tone:'positive',text:`You reached the top of the ${min}–${max} range on every logged set. Next time, try ${w} kg and aim for ${min} reps.`}}if(mostlyLow&&cfg>0){let w=Math.max(0,Math.round((maxW-cfg)/cfg)*cfg);return{tone:'caution',text:`Several sets were below ${min} reps. Consider ${w} kg next time and rebuild toward ${min} reps.`}}let next=reps.map(r=>Math.min(max,r+1));while(next.length<sets.length)next.push(min);return{tone:'neutral',text:`Hold around ${maxW||'the same'} kg and try to add a rep where possible. A good next target is ${next.join(' / ')}.`}}
+function coachStats(){let r14=recentLogs(14),r28=recentLogs(28),bw=latestBodyweight(),pr=allPRRows();let vols14=r14.reduce((a,x)=>a+sessionVolume(x),0),volsPrev=r28.filter(x=>!r14.includes(x)).reduce((a,x)=>a+sessionVolume(x),0);let trend=volsPrev?Math.round((vols14-volsPrev)/volsPrev*100):0;return{r14,r28,bw,pr,vols14,trend,days14:distinctTrainingDays(r14)}}
+function coach(){let nutrition=phaseCoachAnalysis();let st=coachStats(), es=[...new Set(entries().map(e=>e[0]))], recentNotes=logs.slice().reverse().filter(x=>x.note).slice(0,4);let recs=es.map(ex=>({ex,r:coachRecommendation(ex)})).slice(0,4);let trendText=st.trend>8?`Your logged training volume is trending up over the recent period (+${st.trend}%). Keep the increases controlled.`:st.trend<-8?`Your logged training volume is down ${Math.abs(st.trend)}% versus the earlier period. Consider whether recovery, scheduling or exercise performance explains the dip.`:`Your recent logged training volume is fairly stable. Focus on consistent execution and gradual progression.`;let bwText=st.bw?`Latest bodyweight: ${st.bw.kg} kg (${st.bw.date}).`:'No bodyweight entries yet.';return `<section class="card"><h2>🤖 AI Coach <span class="coach-badge">ON-DEVICE</span></h2><p class="sub">A private, data-driven coaching layer built into the tracker. It uses your saved workouts, progression data, notes and bodyweight — no API key or internet connection required.</p><div class="coach-grid"><div class="coach-stat"><div class="small">Training days · 14d</div><div class="big">${st.days14}</div></div><div class="coach-stat"><div class="small">PRs recorded</div><div class="big">${st.pr.length}</div></div><div class="coach-stat"><div class="small">Recent volume</div><div class="big">${Math.round(st.vols14)} kg</div></div><div class="coach-stat"><div class="small">Bodyweight</div><div class="big">${st.bw?st.bw.kg+' kg':'—'}</div></div></div><div class="coach-section"><h3>🎯 Coach's take</h3><div class="coach-note">${esc(trendText)}\n\n${esc(bwText)}</div></div><div class="coach-section"><h3>Next-session recommendations</h3>${recs.length?recs.map(x=>`<div class="coach-item"><h3>${esc(x.ex)}</h3><div class="coach-pill">${x.r.tone==='positive'?'Increase':x.r.tone==='caution'?'Reduce / rebuild':'Progress reps'}</div><p class="${x.r.tone==='positive'?'coach-positive':x.r.tone==='caution'?'coach-caution':'coach-neutral'}">${esc(x.r.text)}</p></div>`).join(''):'<p class="sub">Select a workout day with exercises to get recommendations.</p>'}</div><div class="coach-section"><h3>📝 Recent notes</h3>${recentNotes.length?recentNotes.map(x=>`<div class="coach-item"><b>${esc(x.exercise)}</b><div class="small">${esc(x.date||'')} · ${esc(x.day||'')}</div><div class="coach-note" style="margin-top:8px">${esc(x.note)}</div></div>`).join(''):'<p class="sub">No exercise notes saved yet.</p>'}</div><div class="coach-section"><h3>How the coach makes decisions</h3><p class="sub">It prioritises your actual logged performance: reaching the top of a rep range triggers a sensible load increase, repeated under-performance suggests reducing load, and otherwise it keeps the load stable while nudging reps upward. It also highlights changes in recent training volume and surfaces your notes.</p></div><div class="coach-card"><h3>⚖️ Nutrition / bodyweight phase</h3><div class="coach-box '+nutrition.status+'"><div class="coach-title">'+esc(nutrition.title)+'</div><div>'+esc(nutrition.message)+'</div>'+coachExplanationBlock(nutrition)+'</div></div></section>`}
+
 function clearLogs(){if(confirm('Delete all saved workout history?')){logs=[];save();render()}}
-function progress(){let exercises=[...new Set(logs.map(x=>x.exercise))].sort((a,b)=>a.localeCompare(b)),selected=localStorage.getItem('progressExercise')||(/bench press/i.test(exercises[0]||'')?'Bench press':(exercises[0]||''));if(selected&&!exercises.includes(selected))selected=exercises[0]||'';let b=logs.filter(x=>x.exercise===selected),latest=b.at(-1),first=b[0],lastLoad=latest?Math.max(...latest.sets.map(s=>+s.kg||0)):0,firstLoad=first?Math.max(...first.sets.map(s=>+s.kg||0)):0,total=b.reduce((a,l)=>a+l.sets.reduce((q,s)=>q+(+s.kg||0)*(+s.reps||0),0),0);return '<section class="card"><h2>📈 Progress Dashboard</h2><p class="sub">A clearer view of your training performance, bodyweight trend and personal records.</p>'+
- progressOverview()+
- bodyweightProgress()+
- '<div class="progress-section"><h3>Exercise performance</h3><label>Exercise<select id="progress-exercise" onchange="setProgressExercise(this.value)">'+(exercises.length?exercises.map(e=>'<option value="'+esc(e)+'" '+(e===selected?'selected':'')+'>'+esc(e)+'</option>').join(''):'<option>No exercises logged</option>')+'</select></label>'+
- '<div class="metric" style="margin-top:16px"><div class="card"><div class="small">Latest best load</div><div class="big">'+(lastLoad||'—')+' kg</div></div><div class="card"><div class="small">Change from first</div><div class="big">'+(firstLoad?(lastLoad-firstLoad>=0?'+':'')+(lastLoad-firstLoad)+' kg':'—')+'</div></div><div class="card"><div class="small">Sessions logged</div><div class="big">'+b.length+'</div></div><div class="card"><div class="small">Total volume</div><div class="big">'+Math.round(total)+' kg</div></div></div>'+
- (b.length?'<div class="chart-block"><h3>Working weight</h3><p class="sub">Highest weight used in each saved session.</p><canvas id="load-chart" width="800" height="260"></canvas></div><div class="chart-block"><h3>Total session volume</h3><p class="sub">Weight × reps across all saved sets.</p><canvas id="volume-chart" width="800" height="260"></canvas></div>':'<div class="prog-card"><div class="prog-title">📈 No data yet</div><div class="prog-main">Save a workout for this exercise to build its graphs.</div></div>')+
- '</div>'+prs()+'</section>'}
+function progress(){let exercises=[...new Set(logs.map(x=>x.exercise))].sort((a,b)=>a.localeCompare(b)),selected=localStorage.getItem('progressExercise')||(/bench press/i.test(exercises[0]||'')?'Bench press':(exercises[0]||''));if(selected&&!exercises.includes(selected))selected=exercises[0]||'';let b=logs.filter(x=>x.exercise===selected),latest=b.at(-1),first=b[0],lastLoad=latest?Math.max(...latest.sets.map(s=>+s.kg||0)):0,firstLoad=first?Math.max(...first.sets.map(s=>+s.kg||0)):0,total=b.reduce((a,l)=>a+l.sets.reduce((q,s)=>q+(+s.kg||0)*(+s.reps||0),0),0);return '<section class="card"><h2>📈 Progress Dashboard</h2><p class="sub">Training performance, bodyweight trend and personal records in one place.</p>'+progressOverview()+bodyweightProgress()+'<div class="progress-section"><h3>Exercise performance</h3><label>Exercise<select id="progress-exercise" onchange="setProgressExercise(this.value)">'+(exercises.length?exercises.map(e=>'<option value="'+esc(e)+'" '+(e===selected?'selected':'')+'>'+esc(e)+'</option>').join(''):'<option>No exercises logged</option>')+'</select></label><div class="metric" style="margin-top:16px"><div class="card"><div class="small">Latest best load</div><div class="big">'+(lastLoad||'—')+' kg</div></div><div class="card"><div class="small">Change from first</div><div class="big">'+(firstLoad?(lastLoad-firstLoad>=0?'+':'')+(lastLoad-firstLoad)+' kg':'—')+'</div></div><div class="card"><div class="small">Sessions logged</div><div class="big">'+b.length+'</div></div><div class="card"><div class="small">Total volume</div><div class="big">'+Math.round(total)+' kg</div></div></div>'+(b.length?'<div class="chart-block"><h3>Working weight</h3><p class="sub">Highest weight used in each saved session.</p><canvas id="load-chart" width="800" height="260"></canvas></div><div class="chart-block"><h3>Total session volume</h3><p class="sub">Weight × reps across all saved sets.</p><canvas id="volume-chart" width="800" height="260"></canvas></div>':'<div class="prog-card"><div class="prog-title">📈 No data yet</div><div class="prog-main">Save a workout for this exercise to build its graphs.</div></div>')+'</div>'+prs()+'</section>'}
 function setProgressExercise(ex){localStorage.setItem('progressExercise',ex);render()}
 
 let appearance=localStorage.getItem('appearance')||'light';
