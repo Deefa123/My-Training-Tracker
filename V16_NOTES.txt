@@ -1,0 +1,25 @@
+V16 — Adaptive Cut / Maintain / Bulk bodyweight coach
+
+Cut:
+- Target: -0.50% to -0.75% per week
+- 3-week average trend
+- Proportional calorie adjustment if outside target
+
+Maintain:
+- Captures current weight as maintenance reference when selected
+- Keeps weekly average within +/-0.5%
+- Proportional calorie adjustment if drifting above/below range
+
+Bulk:
+- <=80 kg: +0.15% to +0.25% per week
+- >80 to 85 kg: +0.10% to +0.15% per week
+- >85 kg: +0.05% to +0.15% per week
+
+Calories:
+- Approximation uses 7,700 kcal per kg
+- Rounded to nearest 25 kcal/day
+- Capped between 50 and 350 kcal/day
+- Reassess after another 3 weeks
+
+Missed weigh-ins are excluded from weekly averages.
+Existing V15 features retained.
