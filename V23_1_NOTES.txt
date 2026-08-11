@@ -1,0 +1,8 @@
+V23.1 — Flexible gym weight jumps
+
+- If weight stays the same, the app displays the actual current weight (e.g. 42.5 kg).
+- If progression calls for a weight increase, it displays "New Weight" instead of calculating +2.5 kg.
+- If progression calls for a reduction, it displays "Lower Weight" instead of calculating -2.5 kg.
+- Coach recommendations use the same flexible logic.
+- This allows the user to choose the next appropriate load based on the actual plate/machine increments available at their gym.
+- All V23 functionality retained.

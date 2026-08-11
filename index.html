@@ -193,7 +193,7 @@ details.ui-fold[open]>summary:after{content:'−'}
 .compact-actions button{width:auto}
 .coach-topline{padding:14px;border-radius:16px;background:var(--accent-soft);border:1px solid var(--accent-border);margin:12px 0}
 .history-session details{margin-top:8px}
-</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v23</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
+</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v23.1</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
 P.B=JSON.parse(JSON.stringify(P.A));delete P.B["Wednesday — OFF"];P.B["Wednesday — Legs"]=P.A["Thursday — Legs"];delete P.B["Thursday — Legs"];P.B["Thursday — OFF"]=[];
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];let mode=localStorage.getItem('weekMode')||'auto',day=localStorage.getItem('selectedDay')||'Monday',page='workout',logs=JSON.parse(localStorage.getItem('mtt_logs_v7')||'[]');
@@ -683,7 +683,7 @@ function coachGlobalInsights(exercises){
 }
 
 function coachRecommendation(ex){
- let last=coachSameSessionLast(ex),range=coachRange(ex),cfg=PROG_CONFIG[ex]??2.5,trend=coachExerciseTrend(ex);
+ let last=coachSameSessionLast(ex),range=coachRange(ex),trend=coachExerciseTrend(ex);
  if(!last)return{tone:'neutral',label:'Starting point',text:`No previous log yet. Start near the bottom of the ${range} rep range with a controlled load.`,why:trend.detail};
 
  let [min,max]=parseRange(range),sets=last.sets||[],reps=sets.map(s=>+s.reps||0).filter(Boolean),weights=sets.map(s=>+s.kg||0).filter(Boolean),maxW=weights.length?Math.max(...weights):0;
@@ -691,35 +691,32 @@ function coachRecommendation(ex){
 
  if(trend.kind==='one-off-dip'){
    let next=reps.map(r=>Math.max(min,Math.min(max,r)));while(next.length<sets.length)next.push(min);
-   return{tone:'neutral',label:'Hold — reassess',text:`Keep around ${maxW||'the same'} kg next time rather than reacting to one poor session. Aim to return to roughly ${next.join(' / ')} reps.`,why:trend.detail+' '+coachPhaseContext()};
+   return{tone:'neutral',label:`${maxW} kg`,text:`Keep ${maxW} kg next time rather than reacting to one poor session. Aim to return to roughly ${next.join(' / ')} reps.`,why:trend.detail+' '+coachPhaseContext()};
  }
 
  if(trend.kind==='plateau'){
    if(currentPhase()==='cut'){
-     return{tone:'neutral',label:'Plateau — hold',text:`Keep the current load for now. During a cut, maintaining performance can still be a successful outcome. Focus on clean reps and recovery before changing the exercise or load.`,why:trend.detail+' '+coachPhaseContext()};
+     return{tone:'neutral',label:`${maxW} kg`,text:`Keep ${maxW} kg for now. During a cut, maintaining performance can still be a successful outcome. Focus on clean reps and recovery before changing the exercise or load.`,why:trend.detail+' '+coachPhaseContext()};
    }
-   return{tone:'caution',label:'Plateau — review',text:`Your recent sessions look genuinely flat. Keep the load for one more quality attempt; if it remains unchanged, consider a small load reset, exercise variation, or recovery review rather than forcing heavier weight.`,why:trend.detail+' '+coachPhaseContext()};
+   return{tone:'caution',label:`${maxW} kg`,text:`Your recent sessions look genuinely flat. Keep ${maxW} kg for one more quality attempt; if it remains unchanged, consider a small load reset, exercise variation, or recovery review rather than forcing heavier weight.`,why:trend.detail+' '+coachPhaseContext()};
  }
 
- if(allTop&&cfg>0){
-   let w=Math.round((maxW+cfg)/cfg)*cfg;
-   return{tone:'positive',label:'Increase',text:`You reached the top of the ${min}–${max} range on every logged set. Next time, try ${w} kg and aim for ${min} reps.`,why:`The progression trigger is satisfied across all working sets. ${trend.detail}`};
+ if(allTop){
+   return{tone:'positive',label:'New Weight',text:`You reached the top of the ${min}–${max} range on every logged set. Next time, choose the next appropriate weight available at your gym and aim for ${min} reps.`,why:`The progression trigger is satisfied across all working sets. ${trend.detail}`};
  }
 
- if(mostlyLow&&cfg>0){
-   // Avoid an automatic reduction if this is only a soft single-session dip.
+ if(mostlyLow){
    if(trend.kind==='soft-dip'){
-     return{tone:'neutral',label:'Hold — watch',text:`Several sets were below ${min} reps, but this is not yet a repeated decline. Hold around ${maxW} kg once more and aim to restore the minimum reps before reducing load.`,why:trend.detail+' '+coachPhaseContext()};
+     return{tone:'neutral',label:`${maxW} kg`,text:`Several sets were below ${min} reps, but this is not yet a repeated decline. Keep ${maxW} kg once more and aim to restore the minimum reps before lowering the load.`,why:trend.detail+' '+coachPhaseContext()};
    }
-   let w=Math.max(0,Math.round((maxW-cfg)/cfg)*cfg);
-   return{tone:'caution',label:'Reduce / rebuild',text:`Repeated under-performance supports a small reset. Consider ${w} kg next time and rebuild toward ${min} reps.`,why:`Multiple sets are below the minimum rep target and the recent trend does not look like simple rep progression. ${trend.detail}`};
+   return{tone:'caution',label:'Lower Weight',text:`Repeated under-performance supports a small reset. Choose a sensible lower weight based on the available jumps at your gym and rebuild toward ${min} reps.`,why:`Multiple sets are below the minimum rep target and the recent trend does not look like simple rep progression. ${trend.detail}`};
  }
 
  let next=reps.map(r=>Math.min(max,r+1));while(next.length<sets.length)next.push(min);
  if(trend.kind==='rep-progress'){
-   return{tone:'neutral',label:'Rep progression',text:`Keep around ${maxW||'the same'} kg. Your reps are already trending upward; a good next target is ${next.join(' / ')}.`,why:trend.detail};
+   return{tone:'neutral',label:`${maxW} kg`,text:`Keep ${maxW} kg. Your reps are already trending upward; a good next target is ${next.join(' / ')}.`,why:trend.detail};
  }
- return{tone:'neutral',label:'Progress reps',text:`Hold around ${maxW||'the same'} kg and try to add a rep where possible. A good next target is ${next.join(' / ')}.`,why:trend.detail}
+ return{tone:'neutral',label:`${maxW} kg`,text:`Keep ${maxW} kg and try to add a rep where possible. A good next target is ${next.join(' / ')}.`,why:trend.detail}
 }
 function sessionVolume(log){return (log&&Array.isArray(log.sets)?log.sets:[]).reduce((sum,set)=>sum+(Number(set.kg)||0)*(Number(set.reps)||0),0)}
 function recentLogs(days){let n=Math.max(1,Number(days)||1),today=new Date();today.setHours(23,59,59,999);let cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-(n-1));cutoff.setHours(0,0,0,0);return logs.filter(x=>{if(!x||!x.date)return false;let d=new Date(String(x.date)+'T12:00:00');return !Number.isNaN(d.getTime())&&d>=cutoff&&d<=today})}
@@ -976,34 +973,33 @@ function currentSessionKey(){let k=Object.keys(plan()).find(x=>x.startsWith(day)
 function sessionKeyForLog(l){if(l.session)return normalizeSession(l.session);let p=P[l.week]||{};return normalizeSession(Object.keys(p).find(k=>k.startsWith(l.day))||l.day)}
 function progLast(ex){let key=currentSessionKey();return logs.slice().reverse().find(x=>x.exercise===ex&&sessionKeyForLog(x)===key)}
 function progressionModel(ex,sets,range){
- let [min,max]=parseRange(range),last=progLast(ex),inc=PROG_CONFIG[ex]??2.5;
- if(!last)return{weight:null,targetReps:Array(sets).fill(min),action:'start',message:`Start around ${min} reps with 1–2 reps in reserve. Use a load you can control cleanly.`};
+ let [min,max]=parseRange(range),last=progLast(ex);
+ if(!last)return{weightLabel:null,currentWeight:null,targetReps:Array(sets).fill(min),action:'start',message:`Start around ${min} reps with 1–2 reps in reserve. Use a load you can control cleanly.`};
  let prev=last.sets||[],prevReps=Array.from({length:sets},(_,i)=>+(prev[i]?.reps||prev[prev.length-1]?.reps||0)),prevWeights=Array.from({length:sets},(_,i)=>+(prev[i]?.kg||prev[prev.length-1]?.kg||0));
  let valid=prevReps.filter(Boolean),avg=valid.length?valid.reduce((a,b)=>a+b,0)/valid.length:0;
  let sameWeight=prevWeights.filter(Boolean).length?Math.max(...prevWeights.filter(Boolean)):0;
  let allTop=prevReps.length>=sets&&prevReps.slice(0,sets).every(r=>r>=max);
  let anyBelow=prevReps.slice(0,sets).some(r=>r>0&&r<min);
  let mostlyBelow=valid.length>0&&valid.filter(r=>r<min).length/valid.length>=0.5;
- if(allTop&&inc>0){
-   let weight=Math.round((sameWeight+inc)/inc)*inc;
-   return{weight,targetReps:Array(sets).fill(min),action:'increase',message:`Last session hit ${max} reps on every set. Add ${inc} kg and aim for ${min} reps on each set.`};
+
+ if(allTop){
+   return{weightLabel:'New Weight',currentWeight:sameWeight||null,targetReps:Array(sets).fill(min),action:'increase',message:`Last session hit ${max} reps on every set. Move to the next appropriate weight available at your gym and aim for ${min} reps on each set.`};
  }
- if(mostlyBelow&&inc>0){
-   let weight=Math.max(0,Math.round((sameWeight-inc)/inc)*inc);
-   return{weight,targetReps:Array(sets).fill(min),action:'reduce',message:`Last session fell below the minimum on most sets. Reduce the load by ${inc} kg and rebuild from ${min} reps.`};
+ if(mostlyBelow){
+   return{weightLabel:'Lower Weight',currentWeight:sameWeight||null,targetReps:Array(sets).fill(min),action:'reduce',message:`Last session fell below the minimum on most sets. Use a lower weight that suits the available jumps at your gym and rebuild from ${min} reps.`};
  }
- let targets=prevReps.map((r,i)=>r?Math.min(max,r+1):min);
+
+ let targets=prevReps.map(r=>r?Math.min(max,r+1):min);
  while(targets.length<sets)targets.push(min);
- let label=anyBelow?'Hold / rebuild':'Hold weight';
- let msg=anyBelow?`Keep the load and bring the lower-rep sets back to at least ${min}. Add a rep where possible.`:`Keep the load and try to add 1 rep to each set that is below ${max}.`;
- return{weight:sameWeight||null,targetReps:targets,action:'hold',message:msg,average:avg};
+ let msg=anyBelow?`Keep ${sameWeight} kg and bring the lower-rep sets back to at least ${min}. Add a rep where possible.`:`Keep ${sameWeight} kg and try to add 1 rep to each set that is below ${max}.`;
+ return{weightLabel:sameWeight?`${sameWeight} kg`:'Same Weight',currentWeight:sameWeight||null,targetReps:targets,action:'hold',message:msg,average:avg};
 }
 function progressionCard(ex,sets,range){
  let r=progressionModel(ex,sets,range),last=progLast(ex),prev=last?last.sets.map(s=>`${s.kg}kg × ${s.reps}`).join(' / '):'None yet';
- let label=r.action==='increase'?'Increase weight':r.action==='reduce'?'Reduce weight':r.action==='hold'?'Progress reps':'Starting point';
+ let label=r.action==='increase'?'Increase weight':r.action==='reduce'?'Lower weight':r.action==='hold'?'Progress reps':'Starting point';
  let targets=r.targetReps.join(' / ');
- return `<div class="prog-card"><div class="prog-title">🎯 Smarter progression</div><div class="prog-main">${r.weight!==null?`<b>${r.weight} kg</b> · `:''}<b>Target reps: ${targets}</b></div><div class="prog-prev">Previous same session: ${esc(prev)}</div><div class="prog-action ${r.action}"><b>${label}</b> — ${esc(r.message)}</div>
-            <div class="ref-note"><b>Progression rule:</b> ${r.action==='increase'?'You hit the top of the prescribed rep range across all working sets, so the next step is a small load increase.':r.action==='reduce'?'Performance fell below the minimum rep target, so the app is prioritising quality reps and recovery over forcing load progression.':r.action==='hold'?'You are still progressing within the rep range, so the best next step is to keep the load and add reps before increasing weight.':'This exercise does not yet have enough history for a personalised progression recommendation.'}</div></div>`;
+ return `<div class="prog-card"><div class="prog-title">🎯 Smarter progression</div><div class="prog-main">${r.weightLabel?`<b>${r.weightLabel}</b> · `:''}<b>Target reps: ${targets}</b></div><div class="prog-prev">Previous same session: ${esc(prev)}</div><div class="prog-action ${r.action}"><b>${label}</b> — ${esc(r.message)}</div>
+ <div class="ref-note"><b>Progression rule:</b> ${r.action==='increase'?'You hit the top of the prescribed rep range across all working sets. Choose the next sensible weight available at your gym.':r.action==='reduce'?'Performance fell below the minimum rep target. Choose a sensible lower weight based on the equipment available.':r.action==='hold'?'You are still progressing within the rep range, so keep the same weight and add reps before increasing it.':'This exercise does not yet have enough history for a personalised progression recommendation.'}</div></div>`;
 }
 
 
