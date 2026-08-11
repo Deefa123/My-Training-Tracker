@@ -1,0 +1,15 @@
+V18 — Proper trend visualisation
+
+Bodyweight Progress now shows:
+- Daily weigh-ins as individual points
+- Weekly averages as the main trend line
+- Phase-specific target corridor
+- Cut target corridor: -0.50% to -0.75% per week
+- Maintain zone: ±0.5% around the captured maintenance reference
+- Bulk target corridor changes automatically with bodyweight
+- 4W / 3M / 6M / 1Y / ALL range controls
+- Latest weigh-in, weekly average, week-on-week change and 3-week trend summary
+- Weekly-average history retained below the graph
+- Missed weigh-ins remain excluded from weekly averages
+
+V17 AI explanations and all earlier features are retained.

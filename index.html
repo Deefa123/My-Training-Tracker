@@ -115,7 +115,23 @@ a{color:var(--accent)}
 .coach-status-pill.warn{background:#fff3e8;color:#b54708}
 .coach-status-pill.bad{background:#ffedf0;color:#b42318}
 @media(max-width:560px){.coach-explain-row{grid-template-columns:1fr}}
-</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v17</p></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
+
+.trend-range{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.trend-range button{padding:9px 12px;border-radius:999px;font-size:13px}
+.trend-range button.active{background:var(--accent);color:#fff}
+.trend-legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 6px;font-size:13px;color:var(--muted)}
+.trend-legend span{display:flex;align-items:center;gap:6px}
+.legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.legend-line{width:22px;height:3px;border-radius:3px;display:inline-block}
+.legend-band{width:22px;height:10px;border-radius:4px;display:inline-block}
+.legend-daily{background:#98a2b3}
+.legend-weekly{background:var(--accent)}
+.legend-target{background:color-mix(in srgb,var(--accent) 25%,transparent);border:1px solid var(--accent)}
+.trend-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}
+.trend-summary .card{margin:0;padding:14px}
+.trend-summary .big{font-size:22px}
+@media(max-width:680px){.trend-summary{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v18</p></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
 P.B=JSON.parse(JSON.stringify(P.A));delete P.B["Wednesday — OFF"];P.B["Wednesday — Legs"]=P.A["Thursday — Legs"];delete P.B["Thursday — Legs"];P.B["Thursday — OFF"]=[];
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];let mode=localStorage.getItem('weekMode')||'auto',day=localStorage.getItem('selectedDay')||'Monday',page='workout',logs=JSON.parse(localStorage.getItem('mtt_logs_v7')||'[]');
@@ -336,11 +352,83 @@ function exerciseHistory(ex){
    return '<div class="exercise-history-card"><div class="exercise-history-head"><b>'+esc(l.date)+' · '+esc(l.day)+'</b><span class="exercise-history-meta">Best '+best+' kg · '+Math.round(vol)+' kg volume</span></div><div class="sub">Week '+esc(l.week||'')+' · '+l.sets.map(s=>esc(s.kg)+' kg × '+esc(s.reps)+' reps').join(' · ')+'</div>'+(l.note?'<div class="history-note">📝 '+esc(l.note)+'</div>':'')+'</div>'
  }).join(''):'<p class="sub">No saved sessions for this exercise yet.</p>')+'</div>'
 }
+
+const TREND_RANGE_KEY='mtt_trend_range_v18';
+function trendRange(){return localStorage.getItem(TREND_RANGE_KEY)||'3m'}
+function setTrendRange(v){localStorage.setItem(TREND_RANGE_KEY,v);render()}
+function rangeStartDate(range){
+  let d=new Date();
+  if(range==='all')return null;
+  let days=range==='4w'?28:range==='3m'?92:range==='6m'?183:365;
+  d.setDate(d.getDate()-days);
+  return d;
+}
+function visibleDailyWeights(){
+  let start=rangeStartDate(trendRange());
+  return bodyweightLogs().filter(x=>{
+    if(!start)return true;
+    return new Date(x.date+'T12:00:00')>=start;
+  }).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+}
+function visibleWeeklyWeights(){
+  let start=rangeStartDate(trendRange());
+  return weeklyWeightAverages().filter(x=>{
+    if(!start)return true;
+    return new Date(x.week+'T12:00:00')>=start;
+  });
+}
+function trendTargetSeries(weeks){
+  if(!weeks.length)return [];
+  let phase=currentPhase(),start=weeks[0].average,target=phaseTargetForWeight(phase,start),ref=maintainReference()||start;
+  return weeks.map((w,i)=>{
+    if(phase==='maintain'){
+      return {week:w.week,low:ref*0.995,high:ref*1.005};
+    }
+    let lowRate=target.min,highRate=target.max;
+    let low=start*Math.pow(1+Math.min(lowRate,highRate)/100,i);
+    let high=start*Math.pow(1+Math.max(lowRate,highRate)/100,i);
+    if(low>high){let t=low;low=high;high=t}
+    return {week:w.week,low,high};
+  });
+}
+function trendSummaryCard(){
+  let daily=visibleDailyWeights(),weeks=visibleWeeklyWeights(),analysis=phaseCoachAnalysis();
+  let latest=daily.length?daily[daily.length-1].kg:null,current=weeks.length?weeks[weeks.length-1].average:null;
+  let prev=weeks.length>1?weeks[weeks.length-2].average:null;
+  let wow=current!=null&&prev!=null?current-prev:null;
+  return `<div class="trend-summary">
+    <div class="card"><div class="small">Latest weigh-in</div><div class="big">${latest!=null?latest.toFixed(1)+' kg':'—'}</div></div>
+    <div class="card"><div class="small">Weekly average</div><div class="big">${current!=null?current.toFixed(1)+' kg':'—'}</div></div>
+    <div class="card"><div class="small">Week-on-week</div><div class="big">${wow!=null?`${wow>=0?'+':''}${wow.toFixed(1)} kg`:'—'}</div></div>
+    <div class="card"><div class="small">3-week trend</div><div class="big">${analysis.rate==null?'Building…':`${analysis.rate>=0?'+':''}${analysis.rate.toFixed(2)}%/wk`}</div></div>
+  </div>`;
+}
+function trendVisualCard(){
+  let r=trendRange();
+  return `<div class="chart-block"><h3>📈 Bodyweight trend</h3>
+    <p class="sub">Daily weigh-ins show the noise; the weekly average shows the real trend. The shaded corridor shows the target range for your current phase.</p>
+    <div class="trend-range">
+      ${['4w','3m','6m','1y','all'].map(x=>`<button class="${r===x?'active':''}" onclick="setTrendRange('${x}')">${x==='all'?'ALL':x.toUpperCase()}</button>`).join('')}
+    </div>
+    ${trendSummaryCard()}
+    <div class="trend-legend">
+      <span><i class="legend-dot legend-daily"></i>Daily weigh-ins</span>
+      <span><i class="legend-line legend-weekly"></i>Weekly average</span>
+      <span><i class="legend-band legend-target"></i>Target corridor</span>
+    </div>
+    <canvas id="bodyweight-trend-chart" width="800" height="320"></canvas>
+  </div>`;
+}
+
 function bodyweightProgress(){
  let a=bodyweightLogs(),s=currentAndPreviousBodyweightWeeks();
  if(!a.length)return '<div class="chart-block"><h3>⚖️ Bodyweight</h3><p class="sub">Log your bodyweight from the Workout tab to build this history.</p></div>';
- let first=a[0].kg,last=a[a.length-1].kg,delta=last-first,rows=s.all.slice().reverse();
- return '<div class="chart-block"><h3>⚖️ Bodyweight</h3><p class="sub">Weekly averages use only the days you actually logged. Missing weigh-ins do not count as zeroes.</p><div class="bw-stat bw-stat-4"><div class="card"><div class="small">Latest</div><div class="big">'+last+' kg</div></div><div class="card"><div class="small">This week avg</div><div class="big">'+fmtKg(s.current?.average)+'</div></div><div class="card"><div class="small">Week-on-week</div><div class="big">'+(s.current&&s.previous?((s.current.average-s.previous.average>=0?'+':'')+Math.round((s.current.average-s.previous.average)*10)/10+' kg'):'—')+'</div></div><div class="card"><div class="small">Total entries</div><div class="big">'+a.length+'</div></div></div><div class="bw-history">'+(rows.length?rows.map((r,i)=>'<div class="bw-history-row"><div><b>Week of '+esc(r.week)+'</b><div class="small">'+r.days+'/7 days logged</div></div><strong>'+fmtKg(r.average)+'</strong>'+(i<rows.length-1?'<span class="small">'+((r.average-rows[i+1].average>=0?'+':'')+Math.round((r.average-rows[i+1].average)*10)/10)+' kg</span>':'<span class="small">First recorded week</span>')+'</div>').join(''):'')+'</div><canvas id="bodyweight-chart" width="800" height="260" style="margin-top:14px"></canvas></div>'
+ let last=a[a.length-1].kg,rows=s.all.slice().reverse();
+ return '<div class="chart-block"><h3>⚖️ Bodyweight</h3><p class="sub">Weekly averages use only the days you actually logged. Missing weigh-ins do not count as zeroes.</p>'+
+ trendVisualCard()+
+ '<div class="bw-history"><h3 style="margin-top:20px">Weekly averages</h3>'+
+ (rows.length?rows.map((r,i)=>'<div class="bw-history-row"><div><b>Week of '+esc(r.week)+'</b><div class="small">'+r.days+'/7 days logged</div></div><strong>'+fmtKg(r.average)+'</strong>'+(i<rows.length-1?'<span class="small">'+((r.average-rows[i+1].average>=0?'+':'')+Math.round((r.average-rows[i+1].average)*10)/10)+' kg</span>':'<span class="small">First recorded week</span>')+'</div>').join(''):'')+
+ '</div></div>'
 }
 
 function autoWeek(){let d=new Date(),start=new Date(d.getFullYear(),0,1),w=Math.ceil((((d-start)/86400000)+start.getDay()+1)/7);return w%2?'A':'B'}function week(){return mode==='auto'?autoWeek():mode}function save(){localStorage.setItem('mtt_logs_v7',JSON.stringify(logs))}function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}function plan(){return P[week()]}function entries(){let k=Object.keys(plan()).find(k=>k.startsWith(day));return k?plan()[k]:[]}function setWeek(w){mode=w;localStorage.setItem('weekMode',w);render()}function setDay(d){day=d;localStorage.setItem('selectedDay',d);render()}function showPage(p){page=p;render()}
@@ -430,6 +518,63 @@ return '<section class="card"><h2>Settings</h2><p class="sub">Personalise the lo
 }
 function exportData(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({logs,mode,day,bodyweight:bodyweightLogs()},null,2)],{type:'application/json'}));a.download='training-tracker-backup.json';a.click()}function importData(e){let f=e.target.files[0],r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);logs=x.logs||[];mode=x.mode||'auto';day=x.day||'Monday';save();saveBodyweightLogs(x.bodyweight||[]);localStorage.setItem('weekMode',mode);localStorage.setItem('selectedDay',day);render()}catch(_){alert('Invalid backup file.')}};r.readAsText(f)}
 function chartData(ex){return logs.filter(z=>z.exercise===ex).map(z=>({label:(z.date||'')+' · '+(z.day||''),load:Math.max(...z.sets.map(s=>+s.kg||0)),volume:z.sets.reduce((a,s)=>a+(+s.kg||0)*(+s.reps||0),0)}))}function drawLine(canvasId,data,key,suffix){let c=document.getElementById(canvasId);if(!c)return;let ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,rect=c.getBoundingClientRect(),W=Math.max(320,rect.width||800),H=260;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.font='13px -apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif';let vals=data.map(x=>+x[key]||0),pad={l:48,r:18,t:24,b:42},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;if(!vals.length){ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted');ctx.fillText('No data yet.',pad.l,pad.t+20);return}let max=Math.max(...vals),min=Math.min(...vals);if(max===min){max+=1;min=Math.max(0,min-1)}let accent=getComputedStyle(document.body).getPropertyValue('--accent').trim(),line=getComputedStyle(document.body).getPropertyValue('--line').trim(),ink=getComputedStyle(document.body).getPropertyValue('--muted').trim();ctx.strokeStyle=line;ctx.lineWidth=1;for(let i=0;i<4;i++){let y=pad.t+ph*i/3;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();let val=max-(max-min)*i/3;ctx.fillStyle=ink;ctx.fillText(Math.round(val)+suffix,6,y+4)}let pts=vals.map((v,i)=>{let px=pad.l+(vals.length===1?pw/2:pw*i/(vals.length-1)),py=pad.t+(max-v)/(max-min)*ph;return[px,py]});ctx.strokeStyle=accent;ctx.lineWidth=3;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();pts.forEach((p,i)=>{ctx.fillStyle=accent;ctx.beginPath();ctx.arc(p[0],p[1],4,0,Math.PI*2);ctx.fill();ctx.fillStyle=ink;ctx.fillText(vals[i]+suffix,Math.max(2,p[0]-18),Math.max(14,p[1]-10));});ctx.fillStyle=ink;let labels=[data[0]?.label,data[data.length-1]?.label];if(labels[0])ctx.fillText(labels[0],pad.l,H-14);if(labels[1]&&labels[1]!==labels[0]){let tw=ctx.measureText(labels[1]).width;ctx.fillText(labels[1],W-pad.r-tw,H-14)}}
+
+function drawBodyweightTrend(){
+  let c=document.getElementById('bodyweight-trend-chart');if(!c)return;
+  let daily=visibleDailyWeights(),weeks=visibleWeeklyWeights();if(!daily.length&&!weeks.length)return;
+  let target=trendTargetSeries(weeks),dpr=window.devicePixelRatio||1,rect=c.getBoundingClientRect();
+  let W=Math.max(320,rect.width||800),H=320;c.width=W*dpr;c.height=H*dpr;
+  let ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  ctx.font='12px -apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif';
+
+  let allDates=[...daily.map(x=>x.date),...weeks.map(x=>x.week)];
+  let t0=Math.min(...allDates.map(x=>new Date(x+'T12:00:00').getTime()));
+  let t1=Math.max(...allDates.map(x=>new Date(x+'T12:00:00').getTime()));
+  if(t1===t0)t1=t0+86400000;
+
+  let vals=[...daily.map(x=>+x.kg),...weeks.map(x=>+x.average),...target.flatMap(x=>[x.low,x.high])].filter(Number.isFinite);
+  let min=Math.min(...vals),max=Math.max(...vals),spread=Math.max(.5,max-min),extra=spread*.12;min-=extra;max+=extra;
+
+  let pad={l:52,r:18,t:24,b:44},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  let xFor=d=>pad.l+((new Date(d+'T12:00:00').getTime()-t0)/(t1-t0))*pw;
+  let yFor=v=>pad.t+(max-v)/(max-min)*ph;
+  let css=getComputedStyle(document.body),line=css.getPropertyValue('--line').trim(),accent=css.getPropertyValue('--accent').trim(),muted=css.getPropertyValue('--muted').trim();
+
+  // Grid and y-axis labels
+  ctx.strokeStyle=line;ctx.lineWidth=1;
+  for(let i=0;i<5;i++){
+    let y=pad.t+ph*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+    let v=max-(max-min)*i/4;ctx.fillStyle=muted;ctx.fillText(v.toFixed(1)+' kg',4,y+4);
+  }
+
+  // Target corridor
+  if(target.length){
+    ctx.save();ctx.globalAlpha=.16;ctx.fillStyle=accent;ctx.beginPath();
+    target.forEach((p,i)=>{let x=xFor(p.week),y=yFor(p.high);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+    for(let i=target.length-1;i>=0;i--){let p=target[i];ctx.lineTo(xFor(p.week),yFor(p.low))}
+    ctx.closePath();ctx.fill();ctx.restore();
+    ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle=accent;ctx.lineWidth=1.5;
+    ['low','high'].forEach(k=>{ctx.beginPath();target.forEach((p,i)=>{let x=xFor(p.week),y=yFor(p[k]);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()});
+    ctx.restore();
+  }
+
+  // Daily weigh-ins
+  ctx.fillStyle='#98a2b3';
+  daily.forEach(p=>{ctx.beginPath();ctx.arc(xFor(p.date),yFor(+p.kg),3.2,0,Math.PI*2);ctx.fill()});
+
+  // Weekly average line
+  if(weeks.length){
+    ctx.strokeStyle=accent;ctx.lineWidth=3;ctx.beginPath();
+    weeks.forEach((p,i)=>{let x=xFor(p.week),y=yFor(+p.average);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+    weeks.forEach(p=>{ctx.fillStyle=accent;ctx.beginPath();ctx.arc(xFor(p.week),yFor(+p.average),4.5,0,Math.PI*2);ctx.fill()});
+  }
+
+  // X-axis labels
+  let first=allDates.sort()[0],last=allDates.sort().at(-1);
+  ctx.fillStyle=muted;ctx.fillText(first,pad.l,H-14);
+  let tw=ctx.measureText(last).width;ctx.fillText(last,W-pad.r-tw,H-14);
+}
+
 function drawBodyweight(){
  let a=bodyweightLogs(),c=document.getElementById('bodyweight-chart');if(!c||!a.length)return;
  let data=a.map(x=>({label:x.date,weight:+x.kg||0}));
@@ -445,7 +590,7 @@ function drawBodyweight(){
  ctx.fillStyle=ink;ctx.fillText(data[0].label,pad.l,H-14);if(data.length>1){let tw=ctx.measureText(data[data.length-1].label).width;ctx.fillText(data[data.length-1].label,W-pad.r-tw,H-14)}
 }
 
-function draw(){let ex=localStorage.getItem('progressExercise')||[...new Set(logs.map(x=>x.exercise))][0];if(!ex)return;let data=chartData(ex);drawLine('load-chart',data,'load','kg');drawLine('volume-chart',data,'volume',' kg');drawBodyweight()}
+function draw(){let ex=localStorage.getItem('progressExercise')||[...new Set(logs.map(x=>x.exercise))][0];if(!ex)return;let data=chartData(ex);drawLine('load-chart',data,'load','kg');drawLine('volume-chart',data,'volume',' kg');drawBodyweightTrend()}
 
 const PROG_CONFIG={"Bench press":2.5,"OHP":2.5,"Squat":2.5,"Deadlift":2.5,"Romanian deadlift":2.5,"Incline DB press":2,"Leg press":5,"Lat pulldown":2.5,"Pull-ups / lat pulldown":2.5,"Cable row":2.5,"Face pulls":1.25,"Lateral raises":1,"Triceps pushdown":2.5,"Triceps":2.5,"Biceps curls":2,"Leg curl":2.5,"Calf raises":5,"Cable crunch":2.5,"Hanging leg raises":0,"Ab wheel":0};
 function parseRange(r){let m=String(r).replace("–","-").match(/(\d+)\s*-\s*(\d+)/);return m?[+m[1],+m[2]]:[+r,+r]}
