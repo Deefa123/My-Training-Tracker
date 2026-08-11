@@ -1,0 +1,8 @@
+My Training Tracker v24.1
+
+Fixes the Goals & Milestones form:
+- Goal type now switches correctly between Bodyweight, Exercise and Body measurement.
+- Only fields relevant to the selected goal type are shown.
+- Weight for reps appears only when the reps metric is selected.
+- Exercise goals no longer show an irrelevant direction selector.
+- Existing v24 goals and saved workout data are unchanged.

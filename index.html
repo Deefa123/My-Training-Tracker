@@ -203,7 +203,7 @@ details.ui-fold[open]>summary:after{content:'−'}
 .goal-achieved{padding:8px 10px;border-radius:12px;background:var(--accent-soft);margin-top:10px;font-size:13px;font-weight:800}
 .goal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.goal-actions button{width:auto}
 @media(max-width:700px){.goal-grid{grid-template-columns:1fr}}
-</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v24</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
+</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v24.1</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
 P.B=JSON.parse(JSON.stringify(P.A));delete P.B["Wednesday — OFF"];P.B["Wednesday — Legs"]=P.A["Thursday — Legs"];delete P.B["Thursday — Legs"];P.B["Thursday — OFF"]=[];
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];let mode=localStorage.getItem('weekMode')||'auto',day=localStorage.getItem('selectedDay')||'Monday',page='workout',logs=JSON.parse(localStorage.getItem('mtt_logs_v7')||'[]');
@@ -488,17 +488,26 @@ function goalForm(){
  let ex=goalExercises(),ms=goalMeasurementOptions();
  return `<div class="goal-card"><h3>➕ Add a goal</h3>
  <div class="goal-grid">
- <label>Goal type<select id="g-type" onchange="render()"><option value="bodyweight">Bodyweight</option><option value="exercise">Exercise</option><option value="measurement">Body measurement</option></select></label>
+ <label>Goal type<select id="g-type" onchange="updateGoalFormUI()"><option value="bodyweight">Bodyweight</option><option value="exercise">Exercise</option><option value="measurement">Body measurement</option></select></label>
  <label>Target<input id="g-target" inputmode="decimal" placeholder="Target"></label>
  </div>
  <div class="goal-grid">
- <label>Exercise<select id="g-ex">${ex.length?ex.map(x=>`<option>${esc(x)}</option>`).join(''):'<option>No logged exercises</option>'}</select></label>
- <label>Exercise metric<select id="g-metric"><option value="load">Best load (kg)</option><option value="e1rm">Estimated 1RM (kg)</option><option value="reps">Reps at a chosen weight</option></select></label>
- <label>Weight for reps goal (kg)<input id="g-goalWeight" inputmode="decimal" placeholder="Only for reps goal"></label>
- <label>Measurement<select id="g-measurement">${ms.map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></label>
- <label>Direction<select id="g-direction"><option value="up">Increase toward target</option><option value="down">Decrease toward target</option></select></label>
+ <label id="g-ex-wrap" style="display:none">Exercise<select id="g-ex">${ex.length?ex.map(x=>`<option>${esc(x)}</option>`).join(''):'<option>No logged exercises</option>'}</select></label>
+ <label id="g-metric-wrap" style="display:none">Exercise metric<select id="g-metric" onchange="updateGoalFormUI()"><option value="load">Best load (kg)</option><option value="e1rm">Estimated 1RM (kg)</option><option value="reps">Reps at a chosen weight</option></select></label>
+ <label id="g-goalWeight-wrap" style="display:none">Weight for reps goal (kg)<input id="g-goalWeight" inputmode="decimal" placeholder="Weight"></label>
+ <label id="g-measurement-wrap" style="display:none">Measurement<select id="g-measurement">${ms.map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></label>
+ <label id="g-direction-wrap">Direction<select id="g-direction"><option value="up">Increase toward target</option><option value="down">Decrease toward target</option></select></label>
  </div>
  <button class="primary" style="margin-top:12px" onclick="addGoal()">Add goal</button></div>`
+}
+function updateGoalFormUI(){
+ let type=document.getElementById('g-type')?.value||'bodyweight',metric=document.getElementById('g-metric')?.value||'load';
+ let show=(id,on)=>{let el=document.getElementById(id);if(el)el.style.display=on?'':'none'};
+ show('g-ex-wrap',type==='exercise');
+ show('g-metric-wrap',type==='exercise');
+ show('g-goalWeight-wrap',type==='exercise'&&metric==='reps');
+ show('g-measurement-wrap',type==='measurement');
+ show('g-direction-wrap',type!=='exercise');
 }
 function addGoal(){
  let type=document.getElementById('g-type')?.value||'bodyweight',target=+(document.getElementById('g-target')?.value||0);

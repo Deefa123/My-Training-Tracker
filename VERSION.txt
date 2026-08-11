@@ -1,3 +1,1 @@
-My Training Tracker
-Version: V24
-GitHub Pages build
+v24.1
