@@ -164,7 +164,13 @@ a{color:var(--accent)}
 .dashboard-row:first-child{border-top:0}
 .dashboard-row .right{text-align:right;color:var(--muted)}
 @media(max-width:700px){.dashboard-grid{grid-template-columns:1fr 1fr}.key-lifts{grid-template-columns:1fr}}
-</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v20.1</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
+
+.smart-insight{margin:10px 0;padding:12px 14px;border-radius:14px;background:var(--accent-soft);border:1px solid var(--accent-border)}
+.smart-insight b{display:block;margin-bottom:4px}
+.smart-insight .small{line-height:1.45}
+.coach-reason{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:13px;color:var(--muted);line-height:1.45}
+.coach-context{margin-top:6px;font-size:13px;color:var(--muted)}
+</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v21</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
 P.B=JSON.parse(JSON.stringify(P.A));delete P.B["Wednesday — OFF"];P.B["Wednesday — Legs"]=P.A["Thursday — Legs"];delete P.B["Thursday — Legs"];P.B["Thursday — OFF"]=[];
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];let mode=localStorage.getItem('weekMode')||'auto',day=localStorage.getItem('selectedDay')||'Monday',page='workout',logs=JSON.parse(localStorage.getItem('mtt_logs_v7')||'[]');
@@ -516,7 +522,118 @@ function history(){
 }
 function coachRange(ex){for(let w of ['A','B'])for(let k of Object.keys(P[w]))for(let e of P[w][k])if(e[0]===ex)return e[2];return '8–12'}
 function coachSameSessionLast(ex){let matches=logs.filter(x=>x.exercise===ex);return matches.length?matches[matches.length-1]:null}
-function coachRecommendation(ex){let last=coachSameSessionLast(ex), range=coachRange(ex), cfg=PROG_CONFIG[ex]??2.5;if(!last)return {tone:'neutral',text:`No previous log yet. Start near the bottom of the ${range} rep range with a controlled load.`};let [min,max]=parseRange(range),sets=last.sets||[],reps=sets.map(s=>+s.reps||0).filter(Boolean),weights=sets.map(s=>+s.kg||0).filter(Boolean),maxW=weights.length?Math.max(...weights):0,allTop=reps.length>=sets.length&&reps.length>0&&reps.every(r=>r>=max),mostlyLow=reps.length>0&&reps.filter(r=>r<min).length/reps.length>=.5;if(allTop&&cfg>0){let w=Math.round((maxW+cfg)/cfg)*cfg;return{tone:'positive',text:`You reached the top of the ${min}–${max} range on every logged set. Next time, try ${w} kg and aim for ${min} reps.`}}if(mostlyLow&&cfg>0){let w=Math.max(0,Math.round((maxW-cfg)/cfg)*cfg);return{tone:'caution',text:`Several sets were below ${min} reps. Consider ${w} kg next time and rebuild toward ${min} reps.`}}let next=reps.map(r=>Math.min(max,r+1));while(next.length<sets.length)next.push(min);return{tone:'neutral',text:`Hold around ${maxW||'the same'} kg and try to add a rep where possible. A good next target is ${next.join(' / ')}.`}}
+
+function coachExerciseHistory(ex,limit=5){
+  return logs.filter(x=>x.exercise===ex).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-limit)
+}
+function coachPerf(log){
+  let sets=(log&&log.sets)||[], reps=sets.map(s=>+s.reps||0).filter(v=>v>0), weights=sets.map(s=>+s.kg||0).filter(v=>v>0);
+  let totalReps=reps.reduce((a,b)=>a+b,0), maxW=weights.length?Math.max(...weights):0, bestE=0;
+  sets.forEach(s=>bestE=Math.max(bestE,estimated1RM(+s.kg||0,+s.reps||0)));
+  return {totalReps,maxW,bestE,volume:sessionVolume(log),avgReps:reps.length?totalReps/reps.length:0}
+}
+function coachExerciseTrend(ex){
+  let rows=coachExerciseHistory(ex,5), snaps=rows.map(coachPerf);
+  if(!rows.length)return {rows,snaps,kind:'none',detail:'No previous data yet.'};
+  if(rows.length===1)return {rows,snaps,kind:'new',detail:'Only one logged session is available, so the coach will avoid calling a trend too early.'};
+
+  let last=snaps.at(-1),prev=snaps.at(-2),sameLoad=Math.abs(last.maxW-prev.maxW)<0.01;
+  let eChange=prev.bestE?((last.bestE-prev.bestE)/prev.bestE)*100:0;
+  let volChange=prev.volume?((last.volume-prev.volume)/prev.volume)*100:0;
+
+  // Rep progression at the same load.
+  if(sameLoad && last.totalReps>prev.totalReps){
+    let gains=[];
+    for(let i=1;i<snaps.length;i++){
+      if(Math.abs(snaps[i].maxW-snaps[i-1].maxW)<0.01)gains.push(snaps[i].totalReps-snaps[i-1].totalReps);
+    }
+    if(gains.filter(x=>x>0).length>=2)return {rows,snaps,kind:'rep-progress',detail:`Reps have increased repeatedly at the same working weight. This is productive progression even before the load moves up.`};
+  }
+
+  // One poor session after otherwise stable/reasonable performance.
+  if(snaps.length>=3){
+    let prior=snaps.slice(0,-1), avgE=prior.reduce((a,x)=>a+x.bestE,0)/prior.length, avgV=prior.reduce((a,x)=>a+x.volume,0)/prior.length;
+    if(avgE>0 && last.bestE<avgE*.95 && avgV>0 && last.volume<avgV*.90){
+      return {rows,snaps,kind:'one-off-dip',detail:`The latest session was clearly below your recent average, but one poor session alone is not enough evidence to reduce the load.`};
+    }
+  }
+
+  // Plateau: 3–4 sessions with almost no change in estimated strength or reps.
+  if(snaps.length>=4){
+    let recent=snaps.slice(-4), eVals=recent.map(x=>x.bestE).filter(Boolean), repVals=recent.map(x=>x.totalReps);
+    if(eVals.length===4){
+      let eSpread=(Math.max(...eVals)-Math.min(...eVals))/Math.max(...eVals);
+      let repSpread=Math.max(...repVals)-Math.min(...repVals);
+      if(eSpread<.02 && repSpread<=1){
+        return {rows,snaps,kind:'plateau',detail:`Performance has been essentially flat across four sessions, with little change in estimated strength or total reps. This looks more like a genuine plateau than normal session-to-session noise.`};
+      }
+    }
+  }
+
+  if(eChange>2 || volChange>5)return {rows,snaps,kind:'improving',detail:`Recent performance is moving upward, so the coach will favour continuing the current progression rather than changing strategy.`};
+  if(eChange<-3)return {rows,snaps,kind:'soft-dip',detail:`The latest session was a little weaker than the previous one, but the decline is not yet persistent enough to call a plateau.`};
+  return {rows,snaps,kind:'stable',detail:`Recent performance is broadly stable. The coach will prioritise small rep improvements before forcing a load change.`}
+}
+function coachPhaseContext(){
+  let p=currentPhase(),trend=latestThreeWeekTrend();
+  if(!trend)return p==='cut'?'You are cutting, but there is not enough bodyweight trend data yet to adjust how training performance is interpreted.':p==='bulk'?'You are bulking, but there is not enough bodyweight trend data yet to relate scale gain to gym performance.':'You are maintaining; stable gym performance is a useful sign that recovery is adequate.';
+  let r=trend.averageRate;
+  if(p==='cut')return r<0?`You are cutting at ${r.toFixed(2)}%/week. Maintaining strength during a calorie deficit counts as good progress, so the coach will not overreact to a small one-session dip.`:`Cut mode is selected, but your recent bodyweight trend is not currently falling.`;
+  if(p==='bulk')return r>0?`You are gaining at +${r.toFixed(2)}%/week. The coach expects gym performance to trend upward over time and will flag prolonged stalls more readily.`:`Bulk mode is selected, but your recent bodyweight trend is not currently rising.`;
+  return `You are maintaining. Stable or slowly improving performance is the main training target.`
+}
+function coachGlobalInsights(exercises){
+  let items=[],phase=currentPhase(),trend=latestThreeWeekTrend();
+  let analyses=exercises.map(ex=>({ex,t:coachExerciseTrend(ex)}));
+  let plateaus=analyses.filter(x=>x.t.kind==='plateau'), dips=analyses.filter(x=>x.t.kind==='one-off-dip'), reps=analyses.filter(x=>x.t.kind==='rep-progress');
+  if(plateaus.length)items.push({title:'Possible plateau detected',text:`${plateaus.map(x=>x.ex).join(', ')} ${plateaus.length===1?'has':'have'} been essentially flat across several sessions. The next step should be evidence-based rather than immediately adding more weight.`});
+  if(dips.length)items.push({title:'Do not overreact to one bad session',text:`${dips.map(x=>x.ex).join(', ')} had a noticeably weaker latest session, but the prior data does not yet show a persistent decline.`});
+  if(reps.length)items.push({title:'Rep progression is working',text:`${reps.map(x=>x.ex).join(', ')} ${reps.length===1?'is':'are'} adding reps at a stable load. That is genuine progressive overload even without a weight increase yet.`});
+  if(phase==='cut' && trend && trend.averageRate<0)items.push({title:'Cut context',text:'During a calorie deficit, holding strength and reps is a positive outcome. Small fluctuations are less concerning unless they repeat across multiple sessions.'});
+  if(phase==='bulk' && trend && trend.averageRate>0 && plateaus.length)items.push({title:'Bulk context',text:'Because bodyweight is rising, a prolonged training plateau deserves more attention than it would during a cut. Recovery, exercise execution and programming should be checked before simply adding calories.'});
+  if(!items.length)items.push({title:'No major warning signals',text:'Your current data does not show a persistent plateau or repeated performance drop. Continue gradual progression and let more sessions accumulate.'});
+  return items.slice(0,4)
+}
+
+function coachRecommendation(ex){
+ let last=coachSameSessionLast(ex),range=coachRange(ex),cfg=PROG_CONFIG[ex]??2.5,trend=coachExerciseTrend(ex);
+ if(!last)return{tone:'neutral',label:'Starting point',text:`No previous log yet. Start near the bottom of the ${range} rep range with a controlled load.`,why:trend.detail};
+
+ let [min,max]=parseRange(range),sets=last.sets||[],reps=sets.map(s=>+s.reps||0).filter(Boolean),weights=sets.map(s=>+s.kg||0).filter(Boolean),maxW=weights.length?Math.max(...weights):0;
+ let allTop=reps.length>=sets.length&&reps.length>0&&reps.every(r=>r>=max),mostlyLow=reps.length>0&&reps.filter(r=>r<min).length/reps.length>=.5;
+
+ if(trend.kind==='one-off-dip'){
+   let next=reps.map(r=>Math.max(min,Math.min(max,r)));while(next.length<sets.length)next.push(min);
+   return{tone:'neutral',label:'Hold — reassess',text:`Keep around ${maxW||'the same'} kg next time rather than reacting to one poor session. Aim to return to roughly ${next.join(' / ')} reps.`,why:trend.detail+' '+coachPhaseContext()};
+ }
+
+ if(trend.kind==='plateau'){
+   if(currentPhase()==='cut'){
+     return{tone:'neutral',label:'Plateau — hold',text:`Keep the current load for now. During a cut, maintaining performance can still be a successful outcome. Focus on clean reps and recovery before changing the exercise or load.`,why:trend.detail+' '+coachPhaseContext()};
+   }
+   return{tone:'caution',label:'Plateau — review',text:`Your recent sessions look genuinely flat. Keep the load for one more quality attempt; if it remains unchanged, consider a small load reset, exercise variation, or recovery review rather than forcing heavier weight.`,why:trend.detail+' '+coachPhaseContext()};
+ }
+
+ if(allTop&&cfg>0){
+   let w=Math.round((maxW+cfg)/cfg)*cfg;
+   return{tone:'positive',label:'Increase',text:`You reached the top of the ${min}–${max} range on every logged set. Next time, try ${w} kg and aim for ${min} reps.`,why:`The progression trigger is satisfied across all working sets. ${trend.detail}`};
+ }
+
+ if(mostlyLow&&cfg>0){
+   // Avoid an automatic reduction if this is only a soft single-session dip.
+   if(trend.kind==='soft-dip'){
+     return{tone:'neutral',label:'Hold — watch',text:`Several sets were below ${min} reps, but this is not yet a repeated decline. Hold around ${maxW} kg once more and aim to restore the minimum reps before reducing load.`,why:trend.detail+' '+coachPhaseContext()};
+   }
+   let w=Math.max(0,Math.round((maxW-cfg)/cfg)*cfg);
+   return{tone:'caution',label:'Reduce / rebuild',text:`Repeated under-performance supports a small reset. Consider ${w} kg next time and rebuild toward ${min} reps.`,why:`Multiple sets are below the minimum rep target and the recent trend does not look like simple rep progression. ${trend.detail}`};
+ }
+
+ let next=reps.map(r=>Math.min(max,r+1));while(next.length<sets.length)next.push(min);
+ if(trend.kind==='rep-progress'){
+   return{tone:'neutral',label:'Rep progression',text:`Keep around ${maxW||'the same'} kg. Your reps are already trending upward; a good next target is ${next.join(' / ')}.`,why:trend.detail};
+ }
+ return{tone:'neutral',label:'Progress reps',text:`Hold around ${maxW||'the same'} kg and try to add a rep where possible. A good next target is ${next.join(' / ')}.`,why:trend.detail}
+}
 function sessionVolume(log){return (log&&Array.isArray(log.sets)?log.sets:[]).reduce((sum,set)=>sum+(Number(set.kg)||0)*(Number(set.reps)||0),0)}
 function recentLogs(days){let n=Math.max(1,Number(days)||1),today=new Date();today.setHours(23,59,59,999);let cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-(n-1));cutoff.setHours(0,0,0,0);return logs.filter(x=>{if(!x||!x.date)return false;let d=new Date(String(x.date)+'T12:00:00');return !Number.isNaN(d.getTime())&&d>=cutoff&&d<=today})}
 function distinctTrainingDays(items){return new Set((items||[]).map(x=>x&&x.date).filter(Boolean)).size}
@@ -533,7 +650,22 @@ function coachLatestSessionExercises(){
  return out.length?out:[...new Set(entries().map(e=>e[0]))];
 }
 function coachStats(){let r14=recentLogs(14),r28=recentLogs(28),bw=latestBodyweight(),pr=allPRRows();let vols14=r14.reduce((a,x)=>a+sessionVolume(x),0),volsPrev=r28.filter(x=>!r14.includes(x)).reduce((a,x)=>a+sessionVolume(x),0);let trend=volsPrev?Math.round((vols14-volsPrev)/volsPrev*100):0;return{r14,r28,bw,pr,vols14,trend,days14:distinctTrainingDays(r14)}}
-function coach(){let nutrition=phaseCoachAnalysis();let st=coachStats(), es=coachLatestSessionExercises(), recentNotes=logs.slice().reverse().filter(x=>x.note).slice(0,4);let recs=es.map(ex=>({ex,r:coachRecommendation(ex)}));let trendText=st.trend>8?`Your logged training volume is trending up over the recent period (+${st.trend}%). Keep the increases controlled.`:st.trend<-8?`Your logged training volume is down ${Math.abs(st.trend)}% versus the earlier period. Consider whether recovery, scheduling or exercise performance explains the dip.`:`Your recent logged training volume is fairly stable. Focus on consistent execution and gradual progression.`;let bwText=st.bw?`Latest bodyweight: ${st.bw.kg} kg (${st.bw.date}).`:'No bodyweight entries yet.';return `<section class="card"><h2>🤖 AI Coach <span class="coach-badge">ON-DEVICE</span></h2><p class="sub">A private, data-driven coaching layer built into the tracker. It uses your saved workouts, progression data, notes and bodyweight — no API key or internet connection required.</p><div class="coach-grid"><div class="coach-stat"><div class="small">Training days · 14d</div><div class="big">${st.days14}</div></div><div class="coach-stat"><div class="small">PRs recorded</div><div class="big">${st.pr.length}</div></div><div class="coach-stat"><div class="small">Recent volume</div><div class="big">${Math.round(st.vols14)} kg</div></div><div class="coach-stat"><div class="small">Bodyweight</div><div class="big">${st.bw?st.bw.kg+' kg':'—'}</div></div></div><div class="coach-section"><h3>🎯 Coach's take</h3><div class="coach-note">${esc(trendText)}\n\n${esc(bwText)}</div></div><div class="coach-section"><h3>Next-session recommendations</h3>${recs.length?recs.map(x=>`<div class="coach-item"><h3>${esc(x.ex)}</h3><div class="coach-pill">${x.r.tone==='positive'?'Increase':x.r.tone==='caution'?'Reduce / rebuild':'Progress reps'}</div><p class="${x.r.tone==='positive'?'coach-positive':x.r.tone==='caution'?'coach-caution':'coach-neutral'}">${esc(x.r.text)}</p></div>`).join(''):'<p class="sub">Log a workout to get next-session recommendations.</p>'}</div><div class="coach-section"><h3>📝 Recent notes</h3>${recentNotes.length?recentNotes.map(x=>`<div class="coach-item"><b>${esc(x.exercise)}</b><div class="small">${esc(x.date||'')} · ${esc(x.day||'')}</div><div class="coach-note" style="margin-top:8px">${esc(x.note)}</div></div>`).join(''):'<p class="sub">No exercise notes saved yet.</p>'}</div><div class="coach-section"><h3>How the coach makes decisions</h3><p class="sub">It prioritises your actual logged performance: reaching the top of a rep range triggers a sensible load increase, repeated under-performance suggests reducing load, and otherwise it keeps the load stable while nudging reps upward. It also highlights changes in recent training volume and surfaces your notes.</p></div><div class="coach-card"><h3>⚖️ Nutrition / bodyweight phase</h3><div class="coach-box ${nutrition.status}"><div class="coach-title">${esc(nutrition.title)}</div><div>${esc(nutrition.message)}</div>${coachExplanationBlock(nutrition)}</div></div></section>`}
+function coach(){
+ let nutrition=phaseCoachAnalysis(),st=coachStats(),es=coachLatestSessionExercises(),recentNotes=logs.slice().reverse().filter(x=>x.note).slice(0,4);
+ let recs=es.map(ex=>({ex,r:coachRecommendation(ex)})),insights=coachGlobalInsights(es);
+ let trendText=st.trend>8?`Your logged training volume is trending up over the recent period (+${st.trend}%). Keep the increases controlled.`:st.trend<-8?`Your logged training volume is down ${Math.abs(st.trend)}% versus the earlier period. The smarter coach will look for repeated performance decline before assuming this is a problem.`:`Your recent logged training volume is fairly stable. Focus on consistent execution and gradual progression.`;
+ let bwText=st.bw?`Latest bodyweight: ${st.bw.kg} kg (${st.bw.date}).`:'No bodyweight entries yet.';
+ return `<section class="card"><h2>🤖 AI Coach <span class="coach-badge">V21 SMARTER</span></h2>
+ <p class="sub">Uses several sessions rather than only the latest workout. It distinguishes rep progression, one-off poor sessions and genuine plateaus, and interprets performance in the context of your Cut / Maintain / Bulk phase.</p>
+ <div class="coach-grid"><div class="coach-stat"><div class="small">Training days · 14d</div><div class="big">${st.days14}</div></div><div class="coach-stat"><div class="small">PRs recorded</div><div class="big">${st.pr.length}</div></div><div class="coach-stat"><div class="small">Recent volume</div><div class="big">${Math.round(st.vols14)} kg</div></div><div class="coach-stat"><div class="small">Bodyweight</div><div class="big">${st.bw?st.bw.kg+' kg':'—'}</div></div></div>
+ <div class="coach-section"><h3>🎯 Coach's take</h3><div class="coach-note">${esc(trendText)}\n\n${esc(bwText)}\n\n${esc(coachPhaseContext())}</div></div>
+ <div class="coach-section"><h3>🧠 Smarter coach insights</h3>${insights.map(x=>`<div class="smart-insight"><b>${esc(x.title)}</b><div class="small">${esc(x.text)}</div></div>`).join('')}</div>
+ <div class="coach-section"><h3>Next-session recommendations</h3>${recs.length?recs.map(x=>`<div class="coach-item"><h3>${esc(x.ex)}</h3><div class="coach-pill">${esc(x.r.label||'Progress reps')}</div><p class="${x.r.tone==='positive'?'coach-positive':x.r.tone==='caution'?'coach-caution':'coach-neutral'}">${esc(x.r.text)}</p><div class="coach-reason"><b>Why:</b> ${esc(x.r.why||'Based on your recent logged sessions.')}</div></div>`).join(''):'<p class="sub">Log a workout to get next-session recommendations.</p>'}</div>
+ <div class="coach-section"><h3>📝 Recent notes</h3>${recentNotes.length?recentNotes.map(x=>`<div class="coach-item"><b>${esc(x.exercise)}</b><div class="small">${esc(x.date||'')} · ${esc(x.day||'')}</div><div class="coach-note" style="margin-top:8px">${esc(x.note)}</div></div>`).join(''):'<p class="sub">No exercise notes saved yet.</p>'}</div>
+ <div class="coach-section"><h3>How V21 makes decisions</h3><p class="sub">The coach now looks across up to five recent sessions per exercise. It rewards repeated rep gains at the same load, avoids changing the plan after one unusually poor workout, flags a plateau only after several flat sessions, and treats stable strength during a cut more favourably than the same pattern during a bulk.</p></div>
+ <div class="coach-card"><h3>⚖️ Nutrition / bodyweight phase</h3><div class="coach-box ${nutrition.status}"><div class="coach-title">${esc(nutrition.title)}</div><div>${esc(nutrition.message)}</div>${coachExplanationBlock(nutrition)}</div></div>
+ </section>`
+}
 
 function clearLogs(){if(confirm('Delete all saved workout history?')){logs=[];save();render()}}
 

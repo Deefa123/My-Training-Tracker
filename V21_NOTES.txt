@@ -1,0 +1,16 @@
+V21 — Smarter Coach
+
+Training intelligence:
+- Reviews up to the last 5 sessions per exercise instead of only the latest session.
+- Recognises repeated rep progression at the same load as genuine progressive overload.
+- Distinguishes a one-off poor session from repeated under-performance.
+- Flags a plateau only after several sessions remain essentially flat.
+- Avoids automatically reducing load after one weak workout.
+- Uses Cut / Maintain / Bulk phase context when interpreting performance.
+- During a cut, maintaining strength is treated as a positive outcome.
+- During a bulk, prolonged stalls receive more scrutiny.
+- Adds "Why" explanations to every next-session recommendation.
+- Adds a Smarter Coach Insights section for plateaus, one-off dips and rep progression.
+- All exercises from the latest logged workout remain included.
+
+Existing V20 unified dashboard, bodyweight coaching, History, Progress, PRs, themes and saved-data structure retained.
