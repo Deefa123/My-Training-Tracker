@@ -203,7 +203,7 @@ details.ui-fold[open]>summary:after{content:'−'}
 .goal-achieved{padding:8px 10px;border-radius:12px;background:var(--accent-soft);margin-top:10px;font-size:13px;font-weight:800}
 .goal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.goal-actions button{width:auto}
 @media(max-width:700px){.goal-grid{grid-template-columns:1fr}}
-</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v24.1</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
+</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v24.2</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
 P.B=JSON.parse(JSON.stringify(P.A));delete P.B["Wednesday — OFF"];P.B["Wednesday — Legs"]=P.A["Thursday — Legs"];delete P.B["Thursday — Legs"];P.B["Thursday — OFF"]=[];
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];let mode=localStorage.getItem('weekMode')||'auto',day=localStorage.getItem('selectedDay')||'Monday',page='workout',logs=JSON.parse(localStorage.getItem('mtt_logs_v7')||'[]');
@@ -469,14 +469,24 @@ function goalCurrent(g){
 function goalProgress(g){
  let cur=goalCurrent(g),target=+g.target,start=+g.start;
  if(cur==null||!target)return {cur,pct:0,done:false};
- if(!start){
-   if(g.direction==='down')start=Math.max(cur,target*1.1);
-   else start=Math.min(cur,target*.8);
- }
- let den=target-start,pct=den===0?100:((cur-start)/den)*100;
- pct=Math.max(0,Math.min(100,pct));
+
  let done=g.direction==='down'?cur<=target:cur>=target;
- return {cur,pct:done?100:pct,done}
+ if(done)return {cur,pct:100,done:true};
+
+ // For upward goals, show intuitive absolute progress toward the target.
+ // Example: 62.5 kg current / 100 kg target = 62.5%.
+ if(g.direction!=='down'){
+   let pct=(cur/target)*100;
+   return {cur,pct:Math.max(0,Math.min(100,pct)),done:false};
+ }
+
+ // For downward goals (e.g. bodyweight/waist), progress is measured
+ // from the value recorded when the goal was created toward the lower target.
+ if(!start||start<=target)start=Math.max(cur,target);
+ let total=start-target;
+ let achieved=start-cur;
+ let pct=total>0?(achieved/total)*100:0;
+ return {cur,pct:Math.max(0,Math.min(100,pct)),done:false};
 }
 function goalUnit(g){return g.type==='bodyweight'||g.type==='exercise'?'kg':'cm'}
 function goalLabel(g){

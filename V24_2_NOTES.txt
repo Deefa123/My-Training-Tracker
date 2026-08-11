@@ -1,0 +1,7 @@
+V24.2 — Goal progress percentage fix
+
+- Upward goals now show intuitive absolute progress toward the target.
+- Example: current bench best 62.5 kg toward a 100 kg goal = 62.5%.
+- Exercise load, estimated 1RM and upward measurement goals use current / target.
+- Downward goals continue to use progress from the value recorded when the goal was created toward the lower target.
+- Existing V24.1 goal-form fixes retained.
