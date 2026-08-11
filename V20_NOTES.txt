@@ -1,0 +1,19 @@
+V20 — Unified Progress Dashboard
+
+Progress now combines:
+- Current Cut / Maintain / Bulk phase
+- Weekly average bodyweight
+- Week-on-week bodyweight change
+- 3-week bodyweight trend
+- Phase target/progress
+- 28-day training days
+- 28-day training volume
+- Key lift summaries for Bench press, Squat and Deadlift
+- AI Coach snapshot
+- Recent PRs
+- Full V18 bodyweight trend visualisation
+- Exercise performance graphs
+- Personal records
+
+History and Coach remain as dedicated detailed views.
+V19.2 rendering/cache fixes retained.

@@ -1,4 +1,4 @@
-const C='mtt-v19-2-ghpages';
+const C='mtt-v20-ghpages';
 const A=['./','./index.html','./manifest.webmanifest','./sw.js'];
 
 self.addEventListener('install',e=>{
