@@ -1,0 +1,7 @@
+V19.2 — Coach rendering/cache fix
+
+- Nutrition/bodyweight coach card uses template-literal interpolation.
+- Added a network-first service worker strategy for page navigations/HTML.
+- This prevents an old cached index.html from persisting after future GitHub Pages updates.
+- Cache namespace bumped to mtt-v19-2-ghpages.
+- Existing workout/bodyweight/localStorage data is untouched.
