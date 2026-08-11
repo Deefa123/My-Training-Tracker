@@ -1,0 +1,8 @@
+V23 — UI/UX Refinement
+- No tracking functionality removed.
+- Weekly measurements are now a compact check-in card with Due / Done status and next due date.
+- Full measurement form expands only when requested.
+- Progress uses progressive disclosure for detailed bodyweight, measurements and PR content.
+- History session sets/notes are collapsible.
+- Coach shows the most important insight first and collapses detailed recommendations/notes/explanation.
+- V22 measurements and V21 Smarter Coach retained.
