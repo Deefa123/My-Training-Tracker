@@ -1,0 +1,9 @@
+V24 — Goals & Milestones
+- Adds bodyweight goals.
+- Adds exercise goals: best load, estimated 1RM, or reps at a chosen weight.
+- Adds body-measurement goals, including separate left/right limb measurements.
+- Progress shows current value, target, percentage progress and achieved milestones.
+- Smarter Coach now sees goal progress and includes it in coaching context.
+- Goals are included in backup/export and restore/import.
+- No new main navigation tab; goals live inside Progress and Coach.
+- V23.1 flexible gym-weight progression retained.

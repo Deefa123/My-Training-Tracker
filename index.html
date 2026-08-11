@@ -193,7 +193,17 @@ details.ui-fold[open]>summary:after{content:'−'}
 .compact-actions button{width:auto}
 .coach-topline{padding:14px;border-radius:16px;background:var(--accent-soft);border:1px solid var(--accent-border);margin:12px 0}
 .history-session details{margin-top:8px}
-</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v23.1</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
+
+.goal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.goal-card{padding:15px;border:1px solid var(--line);border-radius:16px;background:var(--card);margin-top:10px}
+.goal-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.goal-title{font-weight:800}.goal-meta{font-size:13px;color:var(--muted);margin-top:4px}
+.goal-pct{font-weight:800;white-space:nowrap}.goal-bar{height:9px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:10px}
+.goal-bar>span{display:block;height:100%;background:currentColor;border-radius:999px}
+.goal-achieved{padding:8px 10px;border-radius:12px;background:var(--accent-soft);margin-top:10px;font-size:13px;font-weight:800}
+.goal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.goal-actions button{width:auto}
+@media(max-width:700px){.goal-grid{grid-template-columns:1fr}}
+</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v24</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
 P.B=JSON.parse(JSON.stringify(P.A));delete P.B["Wednesday — OFF"];P.B["Wednesday — Legs"]=P.A["Thursday — Legs"];delete P.B["Thursday — Legs"];P.B["Thursday — OFF"]=[];
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];let mode=localStorage.getItem('weekMode')||'auto',day=localStorage.getItem('selectedDay')||'Monday',page='workout',logs=JSON.parse(localStorage.getItem('mtt_logs_v7')||'[]');
@@ -433,6 +443,88 @@ function measurementCoachInsight(){
    if(limbAvg!=null&&limbAvg>.3&&(!waist||waist<1.2))return {title:'Measurements support the bulk',text:'Limb measurements are trending upward while waist growth remains relatively controlled. Alongside strength progression, that is a useful sign the bulk is productive.'};
  }
  return {title:'Measurements are building context',text:'No strong body-composition signal is clear yet. Keep measuring consistently and judge the combined 4–8 week trend alongside bodyweight and gym performance.'}
+}
+
+
+const GOALS_KEY='mtt_goals_v24';
+function goals(){try{return JSON.parse(localStorage.getItem(GOALS_KEY)||'[]')}catch(_){return[]}}
+function saveGoals(a){localStorage.setItem(GOALS_KEY,JSON.stringify(a))}
+function goalId(){return Date.now()+Math.floor(Math.random()*10000)}
+function goalExercises(){return [...new Set(logs.map(x=>x.exercise).filter(Boolean))].sort()}
+function goalMeasurementOptions(){return measurementFields()}
+function goalCurrent(g){
+ if(g.type==='bodyweight'){let x=v20LatestWeeklyAvg();return x==null?null:x}
+ if(g.type==='exercise'){
+   let s=exerciseStats(g.exercise); if(!s)return null;
+   if(g.metric==='e1rm')return s.bestE1RM||null;
+   let rows=exerciseSessionRows(g.exercise),vals=[];
+   rows.forEach(r=>(r.sets||[]).forEach(x=>{if(+x.kg>0&&+x.reps>0)vals.push({kg:+x.kg,reps:+x.reps})}));
+   if(!vals.length)return null;
+   if(g.metric==='reps'){let at=vals.filter(x=>Math.abs(x.kg-(+g.goalWeight||0))<.01);return at.length?Math.max(...at.map(x=>x.reps)):null}
+   return Math.max(...vals.map(x=>x.kg));
+ }
+ if(g.type==='measurement'){let l=latestMeasurement();return l&&l[g.measurement]?+l[g.measurement]:null}
+ return null
+}
+function goalProgress(g){
+ let cur=goalCurrent(g),target=+g.target,start=+g.start;
+ if(cur==null||!target)return {cur,pct:0,done:false};
+ if(!start){
+   if(g.direction==='down')start=Math.max(cur,target*1.1);
+   else start=Math.min(cur,target*.8);
+ }
+ let den=target-start,pct=den===0?100:((cur-start)/den)*100;
+ pct=Math.max(0,Math.min(100,pct));
+ let done=g.direction==='down'?cur<=target:cur>=target;
+ return {cur,pct:done?100:pct,done}
+}
+function goalUnit(g){return g.type==='bodyweight'||g.type==='exercise'?'kg':'cm'}
+function goalLabel(g){
+ if(g.type==='bodyweight')return 'Bodyweight';
+ if(g.type==='exercise')return g.metric==='reps'?`${g.exercise} · reps at ${g.goalWeight} kg`:g.metric==='e1rm'?`${g.exercise} · estimated 1RM`:g.exercise;
+ let f=measurementFields().find(x=>x[0]===g.measurement);return f?f[1]:'Measurement'
+}
+function goalForm(){
+ let ex=goalExercises(),ms=goalMeasurementOptions();
+ return `<div class="goal-card"><h3>➕ Add a goal</h3>
+ <div class="goal-grid">
+ <label>Goal type<select id="g-type" onchange="render()"><option value="bodyweight">Bodyweight</option><option value="exercise">Exercise</option><option value="measurement">Body measurement</option></select></label>
+ <label>Target<input id="g-target" inputmode="decimal" placeholder="Target"></label>
+ </div>
+ <div class="goal-grid">
+ <label>Exercise<select id="g-ex">${ex.length?ex.map(x=>`<option>${esc(x)}</option>`).join(''):'<option>No logged exercises</option>'}</select></label>
+ <label>Exercise metric<select id="g-metric"><option value="load">Best load (kg)</option><option value="e1rm">Estimated 1RM (kg)</option><option value="reps">Reps at a chosen weight</option></select></label>
+ <label>Weight for reps goal (kg)<input id="g-goalWeight" inputmode="decimal" placeholder="Only for reps goal"></label>
+ <label>Measurement<select id="g-measurement">${ms.map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></label>
+ <label>Direction<select id="g-direction"><option value="up">Increase toward target</option><option value="down">Decrease toward target</option></select></label>
+ </div>
+ <button class="primary" style="margin-top:12px" onclick="addGoal()">Add goal</button></div>`
+}
+function addGoal(){
+ let type=document.getElementById('g-type')?.value||'bodyweight',target=+(document.getElementById('g-target')?.value||0);
+ if(!target){alert('Enter a target.');return}
+ let g={id:goalId(),type,target,direction:document.getElementById('g-direction')?.value||'up',created:new Date().toISOString().slice(0,10)};
+ if(type==='bodyweight'){let c=v20LatestWeeklyAvg();g.start=c==null?null:c}
+ if(type==='exercise'){g.exercise=document.getElementById('g-ex')?.value;g.metric=document.getElementById('g-metric')?.value||'load';g.goalWeight=+(document.getElementById('g-goalWeight')?.value||0);g.start=goalCurrent(g)}
+ if(type==='measurement'){g.measurement=document.getElementById('g-measurement')?.value;g.start=goalCurrent(g)}
+ let a=goals();a.push(g);saveGoals(a);render()
+}
+function deleteGoal(id){if(!confirm('Delete this goal?'))return;saveGoals(goals().filter(x=>x.id!==id));render()}
+function goalsProgress(){
+ let a=goals();
+ if(!a.length)return `<section class="card"><h2>🎯 Goals & milestones</h2><p class="sub">Set bodyweight, exercise or measurement goals. They will feed into Progress and the Smarter Coach.</p>${goalForm()}</section>`;
+ return `<section class="card"><h2>🎯 Goals & milestones</h2><p class="sub">Your long-term targets, using your existing training, bodyweight and measurement data.</p>
+ ${a.map(g=>{let p=goalProgress(g),u=goalUnit(g);return `<div class="goal-card"><div class="goal-head"><div><div class="goal-title">${esc(goalLabel(g))}</div><div class="goal-meta">${p.cur==null?'Current data unavailable':`Current: ${p.cur.toFixed(1)} ${u}`} · Target: ${(+g.target).toFixed(1)} ${u}</div></div><div class="goal-pct">${Math.round(p.pct)}%</div></div><div class="goal-bar"><span style="width:${p.pct}%"></span></div>${p.done?'<div class="goal-achieved">🏆 Milestone achieved</div>':''}<div class="goal-actions"><button onclick="deleteGoal('+g.id+')">Delete</button></div></div>`}).join('')}
+ ${fold('➕ Add another goal',goalForm())}</section>`
+}
+function goalCoachInsights(){
+ let a=goals();if(!a.length)return [];
+ return a.map(g=>{let p=goalProgress(g),u=goalUnit(g),label=goalLabel(g);
+   if(p.done)return {title:`🏆 ${label} achieved`,text:`You have reached the target of ${(+g.target).toFixed(1)} ${u}. You can keep it as a milestone or replace it with your next target.`};
+   if(p.cur==null)return {title:`${label} goal`,text:'More logged data is needed before the Coach can judge progress toward this goal.'};
+   let remain=Math.abs((+g.target)-p.cur);
+   return {title:`${label}: ${Math.round(p.pct)}%`,text:`Current ${p.cur.toFixed(1)} ${u}; target ${(+g.target).toFixed(1)} ${u}. About ${remain.toFixed(1)} ${u} remains.`}
+ }).slice(0,4)
 }
 
 function bodyweightLogs(){return JSON.parse(localStorage.getItem('mtt_bodyweight_v13')||'[]')}
@@ -736,7 +828,7 @@ function coachLatestSessionExercises(){
 function coachStats(){let r14=recentLogs(14),r28=recentLogs(28),bw=latestBodyweight(),pr=allPRRows();let vols14=r14.reduce((a,x)=>a+sessionVolume(x),0),volsPrev=r28.filter(x=>!r14.includes(x)).reduce((a,x)=>a+sessionVolume(x),0);let trend=volsPrev?Math.round((vols14-volsPrev)/volsPrev*100):0;return{r14,r28,bw,pr,vols14,trend,days14:distinctTrainingDays(r14)}}
 function coach(){
  let nutrition=phaseCoachAnalysis(),st=coachStats(),es=coachLatestSessionExercises(),recentNotes=logs.slice().reverse().filter(x=>x.note).slice(0,4);
- let recs=es.map(ex=>({ex,r:coachRecommendation(ex)})),insights=coachGlobalInsights(es),measureInsight=measurementCoachInsight();
+ let recs=es.map(ex=>({ex,r:coachRecommendation(ex)})),insights=coachGlobalInsights(es),measureInsight=measurementCoachInsight(),goalInsights=goalCoachInsights();
  let trendText=st.trend>8?`Your logged training volume is trending up over the recent period (+${st.trend}%). Keep the increases controlled.`:st.trend<-8?`Your logged training volume is down ${Math.abs(st.trend)}% versus the earlier period. The smarter coach will look for repeated performance decline before assuming this is a problem.`:`Your recent logged training volume is fairly stable. Focus on consistent execution and gradual progression.`;
  let bwText=st.bw?`Latest bodyweight: ${st.bw.kg} kg (${st.bw.date}).`:'No bodyweight entries yet.';
  return `<section class="card"><h2>🤖 AI Coach <span class="coach-badge">V21 SMARTER</span></h2>
@@ -745,7 +837,7 @@ function coach(){
  <div class="coach-grid"><div class="coach-stat"><div class="small">Training days · 14d</div><div class="big">${st.days14}</div></div><div class="coach-stat"><div class="small">PRs recorded</div><div class="big">${st.pr.length}</div></div><div class="coach-stat"><div class="small">Recent volume</div><div class="big">${Math.round(st.vols14)} kg</div></div><div class="coach-stat"><div class="small">Bodyweight</div><div class="big">${st.bw?st.bw.kg+' kg':'—'}</div></div></div>
  <div class="coach-section"><h3>🎯 Coach's take</h3><div class="coach-note">${esc(trendText)}\n\n${esc(bwText)}\n\n${esc(coachPhaseContext())}</div></div>
  <div class="coach-section"><h3>🧠 Smarter coach insights</h3>${insights.map(x=>`<div class="smart-insight"><b>${esc(x.title)}</b><div class="small">${esc(x.text)}</div></div>`).join('')}</div>
- <div class="coach-section"><h3>📐 Body-composition measurements</h3>${measureInsight?`<div class="smart-insight"><b>${esc(measureInsight.title)}</b><div class="small">${esc(measureInsight.text)}</div></div>`:'<p class="sub">Log weekly measurements to add body-composition context to the Coach.</p>'}</div>${fold('🏋️ All next-session recommendations',`${recs.length?recs.map(x=>`<div class="coach-item"><h3>${esc(x.ex)}</h3><div class="coach-pill">${esc(x.r.label||'Progress reps')}</div><p class="${x.r.tone==='positive'?'coach-positive':x.r.tone==='caution'?'coach-caution':'coach-neutral'}">${esc(x.r.text)}</p><div class="coach-reason"><b>Why:</b> ${esc(x.r.why||'Based on your recent logged sessions.')}</div></div>`).join(''):'<p class="sub">Log a workout to get next-session recommendations.</p>'}`)}
+ <div class="coach-section"><h3>🎯 Goals & milestones</h3>${goalInsights.length?goalInsights.map(x=>`<div class="smart-insight"><b>${esc(x.title)}</b><div class="small">${esc(x.text)}</div></div>`).join(''):'<p class="sub">Set goals in Progress to give the Coach long-term targets.</p>'}</div><div class="coach-section"><h3>📐 Body-composition measurements</h3>${measureInsight?`<div class="smart-insight"><b>${esc(measureInsight.title)}</b><div class="small">${esc(measureInsight.text)}</div></div>`:'<p class="sub">Log weekly measurements to add body-composition context to the Coach.</p>'}</div>${fold('🏋️ All next-session recommendations',`${recs.length?recs.map(x=>`<div class="coach-item"><h3>${esc(x.ex)}</h3><div class="coach-pill">${esc(x.r.label||'Progress reps')}</div><p class="${x.r.tone==='positive'?'coach-positive':x.r.tone==='caution'?'coach-caution':'coach-neutral'}">${esc(x.r.text)}</p><div class="coach-reason"><b>Why:</b> ${esc(x.r.why||'Based on your recent logged sessions.')}</div></div>`).join(''):'<p class="sub">Log a workout to get next-session recommendations.</p>'}`)}
  ${fold('📝 Recent notes',`${recentNotes.length?recentNotes.map(x=>`<div class="coach-item"><b>${esc(x.exercise)}</b><div class="small">${esc(x.date||'')} · ${esc(x.day||'')}</div><div class="coach-note" style="margin-top:8px">${esc(x.note)}</div></div>`).join(''):'<p class="sub">No exercise notes saved yet.</p>'}`)}
  ${fold('ℹ️ How the smarter coach makes decisions',`<p class="sub">The coach now looks across up to five recent sessions per exercise. It rewards repeated rep gains at the same load, avoids changing the plan after one unusually poor workout, flags a plateau only after several flat sessions, and treats stable strength during a cut more favourably than the same pattern during a bulk.</p>`)}
  <div class="coach-card"><h3>⚖️ Nutrition / bodyweight phase</h3><div class="coach-box ${nutrition.status}"><div class="coach-title">${esc(nutrition.title)}</div><div>${esc(nutrition.message)}</div>${coachExplanationBlock(nutrition)}</div></div>
@@ -837,7 +929,7 @@ function v20Dashboard(){
 }
 
 function progress(){let exercises=[...new Set(logs.map(x=>x.exercise))].sort((a,b)=>a.localeCompare(b)),selected=localStorage.getItem('progressExercise')||(/bench press/i.test(exercises[0]||'')?'Bench press':(exercises[0]||''));if(selected&&!exercises.includes(selected))selected=exercises[0]||'';let b=logs.filter(x=>x.exercise===selected),latest=b.at(-1),first=b[0],lastLoad=latest?Math.max(...latest.sets.map(s=>+s.kg||0)):0,firstLoad=first?Math.max(...first.sets.map(s=>+s.kg||0)):0,total=b.reduce((a,l)=>a+l.sets.reduce((q,s)=>q+(+s.kg||0)*(+s.reps||0),0),0);return '<section class="card"><h2>📈 Unified Progress Dashboard</h2><p class="sub">Your bodyweight, nutrition phase, training performance, PRs and coaching summary in one place.</p>'+
- v20Dashboard()+
+ v20Dashboard()+goalsProgress()+
  '<div class="dashboard-section"><h3>⚖️ Bodyweight & phase trend</h3>'+fold('⚖️ Bodyweight trend',bodyweightProgress(),true)+fold('📐 Body measurements',measurementProgress())+'</div>'+
  '<div class="dashboard-section"><h3>📊 Exercise performance</h3><label>Exercise<select id="progress-exercise" onchange="setProgressExercise(this.value)">'+(exercises.length?exercises.map(e=>'<option value="'+esc(e)+'" '+(e===selected?'selected':'')+'>'+esc(e)+'</option>').join(''):'<option>No exercises logged</option>')+'</select></label>'+
  '<div class="metric" style="margin-top:16px"><div class="card"><div class="small">Latest best load</div><div class="big">'+(lastLoad||'—')+' kg</div></div><div class="card"><div class="small">Change from first</div><div class="big">'+(firstLoad?(lastLoad-firstLoad>=0?'+':'')+(lastLoad-firstLoad)+' kg':'—')+'</div></div><div class="card"><div class="small">Sessions logged</div><div class="big">'+b.length+'</div></div><div class="card"><div class="small">Total volume</div><div class="big">'+Math.round(total)+' kg</div></div></div>'+
@@ -890,7 +982,7 @@ return '<section class="card"><h2>Settings</h2><p class="sub">Personalise the lo
 '<div class="settings-group"><span class="settings-label">Tracking</span><p class="sub">⚖️ Bodyweight entries saved: '+bodyweightLogs().length+'</p></div><div class="settings-group"><span class="settings-label">Data</span><button onclick="exportData()">Export backup</button> <button onclick="document.getElementById(\'f\').click()">Import backup</button><input id="f" type="file" accept=".json" style="display:none" onchange="importData(event)"></div>'+
 '</section>'
 }
-function exportData(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({logs,mode,day,bodyweight:bodyweightLogs(),measurements:measurementLogs()},null,2)],{type:'application/json'}));a.download='training-tracker-backup.json';a.click()}function importData(e){let f=e.target.files[0],r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);logs=x.logs||[];mode=x.mode||'auto';day=x.day||'Monday';save();saveBodyweightLogs(x.bodyweight||[]);saveMeasurementLogs(x.measurements||[]);localStorage.setItem('weekMode',mode);localStorage.setItem('selectedDay',day);render()}catch(_){alert('Invalid backup file.')}};r.readAsText(f)}
+function exportData(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({logs,mode,day,bodyweight:bodyweightLogs(),measurements:measurementLogs(),goals:goals()},null,2)],{type:'application/json'}));a.download='training-tracker-backup.json';a.click()}function importData(e){let f=e.target.files[0],r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);logs=x.logs||[];mode=x.mode||'auto';day=x.day||'Monday';save();saveBodyweightLogs(x.bodyweight||[]);saveMeasurementLogs(x.measurements||[]);saveGoals(x.goals||[]);localStorage.setItem('weekMode',mode);localStorage.setItem('selectedDay',day);render()}catch(_){alert('Invalid backup file.')}};r.readAsText(f)}
 function chartData(ex){return logs.filter(z=>z.exercise===ex).map(z=>({label:(z.date||'')+' · '+(z.day||''),load:Math.max(...z.sets.map(s=>+s.kg||0)),volume:z.sets.reduce((a,s)=>a+(+s.kg||0)*(+s.reps||0),0)}))}function drawLine(canvasId,data,key,suffix){let c=document.getElementById(canvasId);if(!c)return;let ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,rect=c.getBoundingClientRect(),W=Math.max(320,rect.width||800),H=260;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.font='13px -apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif';let vals=data.map(x=>+x[key]||0),pad={l:48,r:18,t:24,b:42},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;if(!vals.length){ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted');ctx.fillText('No data yet.',pad.l,pad.t+20);return}let max=Math.max(...vals),min=Math.min(...vals);if(max===min){max+=1;min=Math.max(0,min-1)}let accent=getComputedStyle(document.body).getPropertyValue('--accent').trim(),line=getComputedStyle(document.body).getPropertyValue('--line').trim(),ink=getComputedStyle(document.body).getPropertyValue('--muted').trim();ctx.strokeStyle=line;ctx.lineWidth=1;for(let i=0;i<4;i++){let y=pad.t+ph*i/3;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();let val=max-(max-min)*i/3;ctx.fillStyle=ink;ctx.fillText(Math.round(val)+suffix,6,y+4)}let pts=vals.map((v,i)=>{let px=pad.l+(vals.length===1?pw/2:pw*i/(vals.length-1)),py=pad.t+(max-v)/(max-min)*ph;return[px,py]});ctx.strokeStyle=accent;ctx.lineWidth=3;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();pts.forEach((p,i)=>{ctx.fillStyle=accent;ctx.beginPath();ctx.arc(p[0],p[1],4,0,Math.PI*2);ctx.fill();ctx.fillStyle=ink;ctx.fillText(vals[i]+suffix,Math.max(2,p[0]-18),Math.max(14,p[1]-10));});ctx.fillStyle=ink;let labels=[data[0]?.label,data[data.length-1]?.label];if(labels[0])ctx.fillText(labels[0],pad.l,H-14);if(labels[1]&&labels[1]!==labels[0]){let tw=ctx.measureText(labels[1]).width;ctx.fillText(labels[1],W-pad.r-tw,H-14)}}
 
 function drawBodyweightTrend(){
