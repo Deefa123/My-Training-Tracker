@@ -1,0 +1,1 @@
+V22 adds weekly body measurements for waist, chest, shoulders, hips/glutes, neck, and separate left/right arms, thighs, and calves; includes measurement guide, progress summaries, asymmetry tracking, Coach interpretation, and backup support.
