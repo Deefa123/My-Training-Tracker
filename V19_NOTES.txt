@@ -1,0 +1,5 @@
+V19 — History & Progress redesign
+- Exercise History now includes summary KPIs, full chronological sessions, notes, volume, and PR badges.
+- PR badges distinguish Weight PR, Rep PR, estimated 1RM PR, and Volume PR.
+- Progress becomes a dashboard with exercise count, PR profiles, strongest 30-day improvement, potential stalls, bodyweight trend, exercise graphs, and PRs.
+- V18 trend visualisation and V17 AI explanations retained.
