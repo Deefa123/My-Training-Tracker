@@ -1,0 +1,7 @@
+V20.1 — Coach exercise-selection bug fix
+
+- Next-session recommendations now use every exercise actually logged in the most recent workout/session.
+- Removed the previous four-exercise display limit.
+- This fixes later exercises (such as a biceps exercise) being omitted from Coach.
+- Existing V20 dashboard, History, Progress, Coach nutrition logic and saved-data format are unchanged.
+- Service-worker cache bumped to V20.1.
