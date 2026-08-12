@@ -1,0 +1,13 @@
+My Training Tracker — V25
+
+Backup & Data Management update
+
+- Full versioned JSON backup of tracker data and app preferences.
+- Validated restore with confirmation before replacing current data.
+- Backward-compatible restore for older backup format.
+- Backup status/reminder warns when no backup exists or the last export is 7+ days old.
+- Data summary shows workout, weigh-in, measurement and goal counts.
+- CSV export for spreadsheet-friendly review of workouts, bodyweight, measurements and goals.
+- Selective clearing of workouts, bodyweight, measurements or goals.
+- Separate confirmed option to clear all tracker data.
+- Existing V24.3 training, goals, coach, measurements and progress functionality retained.
