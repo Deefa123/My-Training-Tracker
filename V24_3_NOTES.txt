@@ -1,0 +1,9 @@
+V24.3 — Explicit starting value for goals
+
+- Bodyweight goals now ask for Starting weight and Target weight.
+- Weight-loss progress is calculated from Start -> Current -> Target.
+- Example: 90 kg start, 86 kg current, 75 kg target = 26.7% complete.
+- Weight-gain goals can also use an explicit starting weight.
+- Measurement goals also support an explicit starting measurement.
+- Goal cards display Start, Current and Target.
+- V24.2 exercise-goal percentage logic retained.

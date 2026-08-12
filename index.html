@@ -203,7 +203,7 @@ details.ui-fold[open]>summary:after{content:'−'}
 .goal-achieved{padding:8px 10px;border-radius:12px;background:var(--accent-soft);margin-top:10px;font-size:13px;font-weight:800}
 .goal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.goal-actions button{width:auto}
 @media(max-width:700px){.goal-grid{grid-template-columns:1fr}}
-</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v24.2</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
+</style></head><body><header><h1>🏋️ My Training Tracker</h1><p>5-day programme • progressive overload • 100 kg bench goal • v24.3</p><div style="display:none" id="build-marker">V19.2 build</div></header><main id="app"></main><nav class="nav"><button onclick="showPage('workout')">🏋️<br>Workout</button><button onclick="showPage('history')">📚<br>History</button><button onclick="showPage('progress')">📈<br>Progress</button><button onclick="showPage('coach')">🤖<br>Coach</button><button onclick="showPage('settings')">⚙️<br>Settings</button></nav><script>
 const P={A:{"Monday — Push / Bench Strength":[["Bench press",4,"5–6"],["OHP",3,"6–10"],["Incline DB press",2,"8–12"],["Lateral raises",3,"12–20"],["Triceps pushdown",2,"10–15"],["Cable crunch",3,"10–15"]],"Tuesday — Pull / Deadlift":[["Deadlift",3,"3–5"],["Lat pulldown",3,"8–12"],["Cable row",3,"8–12"],["Face pulls",2,"12–20"],["Biceps curls",3,"10–15"]],"Wednesday — OFF":[],"Thursday — Legs":[["Squat",3,"5–8"],["Romanian deadlift",3,"6–10"],["Leg press",3,"10–15"],["Leg curl",2,"10–15"],["Calf raises",3,"10–15"]],"Friday — Upper / Bench Volume":[["Bench press",3,"8–10"],["Pull-ups / lat pulldown",3,"8–12"],["Cable row",2,"8–12"],["OHP",3,"8–10"],["Lateral raises",3,"12–20"],["Triceps",2,"10–15"],["Hanging leg raises",3,"8–15"]],"Saturday — Legs + Arms":[["Squat",3,"6–8"],["Leg press",3,"10–15"],["Leg curl",3,"10–15"],["Calf raises",3,"10–15"],["Biceps curls",3,"10–15"],["Ab wheel",3,"6–12"]],"Sunday — OFF":[]},B:{}};
 P.B=JSON.parse(JSON.stringify(P.A));delete P.B["Wednesday — OFF"];P.B["Wednesday — Legs"]=P.A["Thursday — Legs"];delete P.B["Thursday — Legs"];P.B["Thursday — OFF"]=[];
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];let mode=localStorage.getItem('weekMode')||'auto',day=localStorage.getItem('selectedDay')||'Monday',page='workout',logs=JSON.parse(localStorage.getItem('mtt_logs_v7')||'[]');
@@ -469,23 +469,16 @@ function goalCurrent(g){
 function goalProgress(g){
  let cur=goalCurrent(g),target=+g.target,start=+g.start;
  if(cur==null||!target)return {cur,pct:0,done:false};
-
  let done=g.direction==='down'?cur<=target:cur>=target;
  if(done)return {cur,pct:100,done:true};
 
- // For upward goals, show intuitive absolute progress toward the target.
- // Example: 62.5 kg current / 100 kg target = 62.5%.
  if(g.direction!=='down'){
    let pct=(cur/target)*100;
    return {cur,pct:Math.max(0,Math.min(100,pct)),done:false};
  }
 
- // For downward goals (e.g. bodyweight/waist), progress is measured
- // from the value recorded when the goal was created toward the lower target.
- if(!start||start<=target)start=Math.max(cur,target);
- let total=start-target;
- let achieved=start-cur;
- let pct=total>0?(achieved/total)*100:0;
+ if(!start||start<=target)return {cur,pct:0,done:false};
+ let total=start-target,achieved=start-cur,pct=(achieved/total)*100;
  return {cur,pct:Math.max(0,Math.min(100,pct)),done:false};
 }
 function goalUnit(g){return g.type==='bodyweight'||g.type==='exercise'?'kg':'cm'}
@@ -495,45 +488,45 @@ function goalLabel(g){
  let f=measurementFields().find(x=>x[0]===g.measurement);return f?f[1]:'Measurement'
 }
 function goalForm(){
- let ex=goalExercises(),ms=goalMeasurementOptions();
+ let ex=goalExercises(),ms=goalMeasurementOptions(),type=window._goalType||'bodyweight',metric=window._goalMetric||'load';
+ let bodyweightFields=type==='bodyweight'?`<div class="goal-grid">
+   <label>Starting weight (kg)<input id="g-start" inputmode="decimal" placeholder="Starting weight"></label>
+   <label>Target weight (kg)<input id="g-target" inputmode="decimal" placeholder="Target weight"></label>
+   <label>Direction<select id="g-direction"><option value="down">Lose weight toward target</option><option value="up">Gain weight toward target</option></select></label>
+ </div>`:'';
+ let exerciseFields=type==='exercise'?`<div class="goal-grid">
+   <label>Exercise<select id="g-ex">${ex.length?ex.map(x=>`<option>${esc(x)}</option>`).join(''):'<option>No logged exercises</option>'}</select></label>
+   <label>Exercise metric<select id="g-metric" onchange="window._goalMetric=this.value;render()"><option value="load" ${metric==='load'?'selected':''}>Best load (kg)</option><option value="e1rm" ${metric==='e1rm'?'selected':''}>Estimated 1RM (kg)</option><option value="reps" ${metric==='reps'?'selected':''}>Reps at a chosen weight</option></select></label>
+   ${metric==='reps'?'<label>Weight for reps goal (kg)<input id="g-goalWeight" inputmode="decimal" placeholder="Weight"></label>':''}
+   <label>Target<input id="g-target" inputmode="decimal" placeholder="Target"></label>
+   <label>Direction<select id="g-direction"><option value="up">Increase toward target</option><option value="down">Decrease toward target</option></select></label>
+ </div>`:'';
+ let measurementFieldsHtml=type==='measurement'?`<div class="goal-grid">
+   <label>Measurement<select id="g-measurement">${ms.map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></label>
+   <label>Starting measurement (cm)<input id="g-start" inputmode="decimal" placeholder="Starting measurement"></label>
+   <label>Target measurement (cm)<input id="g-target" inputmode="decimal" placeholder="Target measurement"></label>
+   <label>Direction<select id="g-direction"><option value="up">Increase toward target</option><option value="down">Decrease toward target</option></select></label>
+ </div>`:'';
  return `<div class="goal-card"><h3>➕ Add a goal</h3>
- <div class="goal-grid">
- <label>Goal type<select id="g-type" onchange="updateGoalFormUI()"><option value="bodyweight">Bodyweight</option><option value="exercise">Exercise</option><option value="measurement">Body measurement</option></select></label>
- <label>Target<input id="g-target" inputmode="decimal" placeholder="Target"></label>
- </div>
- <div class="goal-grid">
- <label id="g-ex-wrap" style="display:none">Exercise<select id="g-ex">${ex.length?ex.map(x=>`<option>${esc(x)}</option>`).join(''):'<option>No logged exercises</option>'}</select></label>
- <label id="g-metric-wrap" style="display:none">Exercise metric<select id="g-metric" onchange="updateGoalFormUI()"><option value="load">Best load (kg)</option><option value="e1rm">Estimated 1RM (kg)</option><option value="reps">Reps at a chosen weight</option></select></label>
- <label id="g-goalWeight-wrap" style="display:none">Weight for reps goal (kg)<input id="g-goalWeight" inputmode="decimal" placeholder="Weight"></label>
- <label id="g-measurement-wrap" style="display:none">Measurement<select id="g-measurement">${ms.map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></label>
- <label id="g-direction-wrap">Direction<select id="g-direction"><option value="up">Increase toward target</option><option value="down">Decrease toward target</option></select></label>
- </div>
+ <label>Goal type<select id="g-type" onchange="window._goalType=this.value;render()"><option value="bodyweight" ${type==='bodyweight'?'selected':''}>Bodyweight</option><option value="exercise" ${type==='exercise'?'selected':''}>Exercise</option><option value="measurement" ${type==='measurement'?'selected':''}>Body measurement</option></select></label>
+ ${bodyweightFields}${exerciseFields}${measurementFieldsHtml}
  <button class="primary" style="margin-top:12px" onclick="addGoal()">Add goal</button></div>`
 }
-function updateGoalFormUI(){
- let type=document.getElementById('g-type')?.value||'bodyweight',metric=document.getElementById('g-metric')?.value||'load';
- let show=(id,on)=>{let el=document.getElementById(id);if(el)el.style.display=on?'':'none'};
- show('g-ex-wrap',type==='exercise');
- show('g-metric-wrap',type==='exercise');
- show('g-goalWeight-wrap',type==='exercise'&&metric==='reps');
- show('g-measurement-wrap',type==='measurement');
- show('g-direction-wrap',type!=='exercise');
-}
 function addGoal(){
- let type=document.getElementById('g-type')?.value||'bodyweight',target=+(document.getElementById('g-target')?.value||0);
+ let type=window._goalType||document.getElementById('g-type')?.value||'bodyweight',target=+(document.getElementById('g-target')?.value||0),startVal=+(document.getElementById('g-start')?.value||0);
  if(!target){alert('Enter a target.');return}
  let g={id:goalId(),type,target,direction:document.getElementById('g-direction')?.value||'up',created:new Date().toISOString().slice(0,10)};
- if(type==='bodyweight'){let c=v20LatestWeeklyAvg();g.start=c==null?null:c}
- if(type==='exercise'){g.exercise=document.getElementById('g-ex')?.value;g.metric=document.getElementById('g-metric')?.value||'load';g.goalWeight=+(document.getElementById('g-goalWeight')?.value||0);g.start=goalCurrent(g)}
- if(type==='measurement'){g.measurement=document.getElementById('g-measurement')?.value;g.start=goalCurrent(g)}
- let a=goals();a.push(g);saveGoals(a);render()
+ if(type==='bodyweight'){let current=v20LatestWeeklyAvg();g.start=startVal||current||null}
+ if(type==='exercise'){g.exercise=document.getElementById('g-ex')?.value;g.metric=window._goalMetric||document.getElementById('g-metric')?.value||'load';g.goalWeight=+(document.getElementById('g-goalWeight')?.value||0);g.start=goalCurrent(g)}
+ if(type==='measurement'){g.measurement=document.getElementById('g-measurement')?.value;g.start=startVal||goalCurrent(g)}
+ let a=goals();a.push(g);saveGoals(a);window._goalType='bodyweight';window._goalMetric='load';render()
 }
 function deleteGoal(id){if(!confirm('Delete this goal?'))return;saveGoals(goals().filter(x=>x.id!==id));render()}
 function goalsProgress(){
  let a=goals();
  if(!a.length)return `<section class="card"><h2>🎯 Goals & milestones</h2><p class="sub">Set bodyweight, exercise or measurement goals. They will feed into Progress and the Smarter Coach.</p>${goalForm()}</section>`;
  return `<section class="card"><h2>🎯 Goals & milestones</h2><p class="sub">Your long-term targets, using your existing training, bodyweight and measurement data.</p>
- ${a.map(g=>{let p=goalProgress(g),u=goalUnit(g);return `<div class="goal-card"><div class="goal-head"><div><div class="goal-title">${esc(goalLabel(g))}</div><div class="goal-meta">${p.cur==null?'Current data unavailable':`Current: ${p.cur.toFixed(1)} ${u}`} · Target: ${(+g.target).toFixed(1)} ${u}</div></div><div class="goal-pct">${Math.round(p.pct)}%</div></div><div class="goal-bar"><span style="width:${p.pct}%"></span></div>${p.done?'<div class="goal-achieved">🏆 Milestone achieved</div>':''}<div class="goal-actions"><button onclick="deleteGoal('+g.id+')">Delete</button></div></div>`}).join('')}
+ ${a.map(g=>{let p=goalProgress(g),u=goalUnit(g);return `<div class="goal-card"><div class="goal-head"><div><div class="goal-title">${esc(goalLabel(g))}</div><div class="goal-meta">${g.start?`Start: ${(+g.start).toFixed(1)} ${u} · `:''}${p.cur==null?'Current data unavailable':`Current: ${p.cur.toFixed(1)} ${u}`} · Target: ${(+g.target).toFixed(1)} ${u}</div></div><div class="goal-pct">${Math.round(p.pct)}%</div></div><div class="goal-bar"><span style="width:${p.pct}%"></span></div>${p.done?'<div class="goal-achieved">🏆 Milestone achieved</div>':''}<div class="goal-actions"><button onclick="deleteGoal('+g.id+')">Delete</button></div></div>`}).join('')}
  ${fold('➕ Add another goal',goalForm())}</section>`
 }
 function goalCoachInsights(){
