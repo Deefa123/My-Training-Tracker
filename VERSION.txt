@@ -1,2 +1,2 @@
-My Training Tracker v25
-Backup & Data Management
+My Training Tracker v25.1
+History exercise selection bug fix

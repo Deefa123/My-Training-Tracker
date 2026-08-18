@@ -1,0 +1,8 @@
+My Training Tracker — V25.1
+
+History bug-fix release
+
+- Fixed Exercise History selector not refreshing the displayed exercise statistics.
+- Selecting an exercise now saves the selection and immediately re-renders its own stats, PRs and session history.
+- No workout, bodyweight, measurement, goal, or backup data structures were changed.
+- Existing V25 functionality retained.
